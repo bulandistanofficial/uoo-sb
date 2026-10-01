@@ -571,11 +571,12 @@
             signOut, onAuthStateChanged, updateProfile 
         } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { 
-            getFirestore, collection, addDoc, onSnapshot, 
+            getFirestore, collection, addDoc, onSnapshot, getDocs, 
             query, orderBy, deleteDoc, doc, setDoc, updateDoc 
         } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'uoo-sb-classifieds-app';
+        // Fixed shared app ID: every device/browser must use the exact same Firestore path.
+        const appId = 'uoo-sb-classifieds-app';
 
         const firebaseConfig = {
             apiKey: "AIzaSyDNu2etdpEuJMoZUzbq0iGIEbbhkUoxFNE",
@@ -619,6 +620,8 @@
         let activeChatPartnerId = null;
 
         window.addEventListener('DOMContentLoaded', async () => {
+            // Populate all 127 Pakistan cities immediately, even if Firebase takes time or fails.
+            populateUooSelects();
             try {
                 const app = initializeApp(firebaseConfig);
                 try { getAnalytics(app); } catch(e) {}
@@ -637,6 +640,9 @@
                     if (user && !user.isAnonymous) {
                         loadUserProfile(user.uid);
                         initChatRealtime();
+                        // Reconnect the shared classifieds feed after login so the
+                        // current account always reads the same Firebase collection.
+                        initRealtimeListener();
                     } else {
                         currentProfile = null;
                         renderChatMessages();
@@ -648,7 +654,6 @@
                 } else {
                     await signInAnonymously(auth);
                 }
-                populateUooSelects();
                 initRealtimeListener();
             } catch (err) {
                 console.error("Firebase init error:", err);
@@ -1317,17 +1322,13 @@
             if (!db) return loadLocalStorageFallback();
 
             try {
-                const adsColRef = collection(
-                    db,
-                    'artifacts',
-                    appId,
-                    'public',
-                    'data',
-                    'uoo_sb_classifieds'
-                );
+                const adsColRef = collection(db, 'uoo_sb_classifieds');
 
                 // No Firestore orderBy here. Sorting is done in JavaScript.
                 // This avoids index/query problems and supports older documents.
+                // Live shared feed: every authenticated browser listens to the same
+                // Firestore collection. Cloudinary only stores the image files; Firestore
+                // stores the public ad data + Cloudinary URLs.
                 unsubscribeAds = onSnapshot(
                     adsColRef,
                     (snapshot) => {
@@ -1350,24 +1351,56 @@
                             });
                         });
 
-                        allAds = remoteAds;
+                        // Firestore is the shared source of truth: every signed-in user
+                        // reads the same public classifieds collection, so posts from any
+                        // user are shown to everyone (subject only to the selected filters).
+                        allAds = remoteAds.sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0));
+
+                        // Keep a local cache as a backup, not as the main data source.
+                        try {
+                            localStorage.setItem('uoosb_classifieds_ads', JSON.stringify(allAds));
+                        } catch (cacheError) {
+                            console.warn('Local ad cache failed:', cacheError);
+                        }
+
                         sortAndRenderAds();
 
                         if (currentView === 'profile') {
                             renderProfileView();
                         }
                     },
-                    (error) => {
+                    async (error) => {
                         console.error("Firestore realtime listener error:", error);
 
-                        // Do not erase the current UI when realtime sync fails.
-                        loadLocalStorageFallback();
-
-                        showCustomAlert(
-                            "Live Sync Issue",
-                            "Realtime sync issue hai. Saved post local backup se show kiya ja raha hai.",
-                            "error"
-                        );
+                        // Try a normal Firestore read once. If this also fails, the
+                        // problem is almost certainly Firestore Rules/auth/network,
+                        // not the UI.
+                        try {
+                            const snap = await getDocs(adsColRef);
+                            const remoteAds = [];
+                            snap.forEach((docSnap) => {
+                                const data = docSnap.data() || {};
+                                if (data.image && !Array.isArray(data.images)) data.images = [data.image];
+                                if (!Array.isArray(data.images)) data.images = [];
+                                remoteAds.push({ id: docSnap.id, ...data });
+                            });
+                            allAds = remoteAds.sort((a,b) => Number(b.timestamp||0) - Number(a.timestamp||0));
+                            localStorage.setItem('uoosb_classifieds_ads', JSON.stringify(allAds));
+                            sortAndRenderAds();
+                            showCustomAlert(
+                                "Live Reconnect",
+                                "Posts are connected again. Firebase is now syncing the shared feed.",
+                                "success"
+                            );
+                        } catch (readError) {
+                            console.error("Firestore read fallback failed:", readError);
+                            loadLocalStorageFallback();
+                            showCustomAlert(
+                                "Firebase Sync Error",
+                                "Posts are not being shared between devices. In Firebase Console → Firestore → Rules, allow authenticated users to read/write the UOO S&B classifieds collection. Also check that both devices use this same Firebase project.",
+                                "error"
+                            );
+                        }
                     }
                 );
             } catch (e) {
@@ -1385,7 +1418,7 @@
             ];
             if (!db) return;
             for (const ad of samples) {
-                try { await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'uoo_sb_classifieds'), ad); }
+                try { await addDoc(collection(db, 'uoo_sb_classifieds'), ad); }
                 catch(e) { console.warn("Seed failed:", e.message); }
             }
         }
@@ -1531,16 +1564,15 @@
 
                 if (db) {
                     // Save to Firestore first.
-                    const adsCollection = collection(
-                        db,
-                        'artifacts',
-                        appId,
-                        'public',
-                        'data',
-                        'uoo_sb_classifieds'
-                    );
+                    const adsCollection = collection(db, 'uoo_sb_classifieds');
 
                     const savedRef = await addDoc(adsCollection, newAd);
+
+                    // Verify the write completed against Firebase before telling the
+                    // user the ad is live. The Cloudinary URLs are stored in Firestore.
+                    if (!savedRef || !savedRef.id) {
+                        throw new Error("Firebase did not return the saved ad ID.");
+                    }
 
                     // IMPORTANT: immediately show the newly saved post.
                     const savedAd = {
@@ -1874,7 +1906,7 @@
                 closeConfirm();
                 try {
                     if (db) {
-                        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'uoo_sb_classifieds', id));
+                        await deleteDoc(doc(db, 'uoo_sb_classifieds', id));
                     } else {
                         allAds = allAds.filter(a => a.id !== id);
                         localStorage.setItem('uoosb_classifieds_ads', JSON.stringify(allAds));
