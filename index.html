@@ -56,10 +56,50 @@
             to { opacity: 1; transform: translateY(0); }
         }
         .spin { animation: spin 1s linear infinite; }
-        @media (max-width: 640px) {
-            #chatDrawer > div { max-width: 100%; width: 100%; height: 100dvh; max-height: 100dvh; border-radius: 0; }
-            #chatMessagesList { min-height: 0; }
+        /* Messenger: full-screen on phones, centered app-style window on laptop/desktop */
+        #chatDrawer {
+            background: rgba(2, 6, 23, .68);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            padding: 18px;
         }
+        #chatDrawer > div {
+            width: min(1180px, 100%);
+            height: min(820px, calc(100dvh - 36px));
+            max-height: calc(100dvh - 36px);
+            border-radius: 24px;
+            overflow: hidden;
+            border: 1px solid rgba(148,163,184,.22);
+        }
+        #chatConversationList { max-height: 100%; overflow-y: auto; }
+        #chatMessagesList { min-height: 0; }
+        @media (max-width: 767px) {
+            #chatDrawer { padding: 0; }
+            #chatDrawer > div {
+                max-width: 100%;
+                width: 100%;
+                height: 100dvh;
+                max-height: 100dvh;
+                border-radius: 0;
+                border: 0;
+            }
+        }
+        .verified-tick {
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            width:15px;
+            height:15px;
+            border-radius:50%;
+            background:#0ea5e9;
+            color:#fff;
+            font-size:9px;
+            line-height:1;
+            flex:none;
+        }
+        .chat-avatar-click { cursor:pointer; transition:transform .15s ease, box-shadow .15s ease; }
+        .chat-avatar-click:hover { transform:scale(1.04); box-shadow:0 0 0 3px rgba(14,165,233,.18); }
+        .presence-dot { box-shadow:0 0 0 1px rgba(255,255,255,.55); }
         img { max-width: 100%; }
         button, a { touch-action: manipulation; }
         @keyframes spin {
@@ -494,7 +534,10 @@
                     </div>
                     <div class="min-w-0">
                         <h3 class="font-bold text-base truncate">UOO S&B Messenger</h3>
+                        <div class="flex items-center gap-2">
                         <p class="text-xs text-slate-400 truncate">Chat with buyers and sellers</p>
+                        <button onclick="enableMessageNotifications()" class="text-[10px] text-sky-600 dark:text-sky-400 font-bold hover:underline" title="Enable notifications"><i class="fa-solid fa-bell"></i> Notifications</button>
+                    </div>
                     </div>
                 </div>
                 <button onclick="closeChatDrawer()" class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl flex-shrink-0">
@@ -533,6 +576,31 @@
             <div class="h-2.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden"><div id="chatUploadBar" class="progress-bar-fill h-full rounded-full" style="width:0%"></div></div>
             <p class="text-[11px] text-slate-400 mt-3 text-center">Please wait while your image is uploaded.</p>
         </div>
+    </div>
+
+    <!-- CHAT PROFILE IMAGE VIEWER -->
+    <div id="chatProfileImageModal" class="fixed inset-0 z-[100] hidden bg-black/85 backdrop-blur-md items-center justify-center p-4" onclick="closeChatProfileImage()">
+        <div class="relative max-w-3xl max-h-[90vh] w-full flex items-center justify-center" onclick="event.stopPropagation()">
+            <button onclick="closeChatProfileImage()" class="absolute -top-2 -right-2 sm:top-2 sm:right-2 z-10 w-10 h-10 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+            <img id="chatProfileImageLarge" src="" alt="Profile photo" class="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl">
+        </div>
+    </div>
+
+    <!-- BROWSER/IN-APP MESSAGE NOTIFICATION -->
+    <div id="messageToast" class="fixed top-20 right-4 z-[110] hidden w-[min(360px,calc(100vw-32px))]">
+        <button id="messageToastButton" class="w-full text-left bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl rounded-2xl p-3 flex gap-3 items-center">
+            <div class="relative flex-shrink-0">
+                <img id="messageToastPhoto" src="https://placehold.co/80x80/16a34a/ffffff?text=U" class="w-11 h-11 rounded-full object-cover">
+                <span class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-white dark:border-slate-900"></span>
+            </div>
+            <div class="min-w-0 flex-1">
+                <div id="messageToastName" class="font-bold text-sm truncate">New message</div>
+                <div id="messageToastText" class="text-xs text-slate-500 dark:text-slate-400 truncate">You have a new message</div>
+            </div>
+            <span class="text-sky-500 text-lg"><i class="fa-solid fa-bell"></i></span>
+        </button>
     </div>
 
     <!-- ALERT MODAL -->
@@ -618,6 +686,9 @@
         let unsubscribeProfile = null;
         let presenceTimer = null;
         let activeChatPartnerId = null;
+        let presenceUnsubscribers = {};
+        let knownUnreadSnapshot = {};
+        let toastTimer = null;
 
         window.addEventListener('DOMContentLoaded', async () => {
             // Populate all 127 Pakistan cities immediately, even if Firebase takes time or fails.
@@ -910,6 +981,7 @@
                         };
                     }
                     updateAuthHeaderUI();
+                    if (currentUser && !currentUser.isAnonymous) startPresence();
                     if (currentView === 'profile') renderProfileView();
                 });
             } catch(e) { console.error("Profile load error:", e); }
@@ -2020,6 +2092,9 @@
             writePresence(true);
             presenceTimer = setInterval(() => writePresence(true), 20000);
             window.addEventListener('beforeunload', () => { writePresence(false); });
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') writePresence(true);
+            });
         }
 
         function stopPresence() {
@@ -2033,17 +2108,100 @@
 
         function getTickHTML(message) {
             if (message.senderId !== currentUser?.uid) return '';
-            if (message.seen) return '<span class="ml-1 text-sky-300 font-bold">✓✓</span>';
-            if (message.delivered) return '<span class="ml-1 text-white/80 font-bold">✓✓</span>';
-            return '<span class="ml-1 text-white/80 font-bold">✓</span>';
+            if (message.seen) return '<span class="ml-1 text-sky-300 font-bold" title="Seen">✓✓</span>';
+            if (message.delivered) return '<span class="ml-1 text-white/80 font-bold" title="Delivered">✓✓</span>';
+            return '<span class="ml-1 text-white/80 font-bold" title="Sent">✓</span>';
         }
+
+        function getVerifiedTickHTML(data = {}) {
+            /* Blue verification tick requested for chat/profile names. */
+            return data.verified === false ? '' : '<span class="verified-tick" title="Verified"><i class="fa-solid fa-check"></i></span>';
+        }
+
+        function safeText(value) {
+            return String(value ?? '').replace(/[&<>"']/g, ch => ({
+                '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'
+            }[ch]));
+        }
+
+        window.openChatProfileImage = function(url) {
+            if (!url) return;
+            const modal = document.getElementById('chatProfileImageModal');
+            const img = document.getElementById('chatProfileImageLarge');
+            if (!modal || !img) return;
+            img.src = url;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        };
+
+        window.closeChatProfileImage = function() {
+            const modal = document.getElementById('chatProfileImageModal');
+            if (!modal) return;
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        };
+
+        function showMessageNotification(conversation, messageText = 'New message') {
+            const otherIsSeller = conversation.sellerId !== currentUser.uid;
+            const name = otherIsSeller ? (conversation.sellerName || 'Seller') : (conversation.buyerName || 'Buyer');
+            const photo = otherIsSeller ? conversation.sellerPhoto : conversation.buyerPhoto;
+            const toast = document.getElementById('messageToast');
+            const toastBtn = document.getElementById('messageToastButton');
+            if (!toast) return;
+
+            document.getElementById('messageToastName').textContent = name;
+            document.getElementById('messageToastText').textContent = messageText || 'New message';
+            const photoEl = document.getElementById('messageToastPhoto');
+            if (photoEl) photoEl.src = photo || `https://placehold.co/80x80/16a34a/ffffff?text=${encodeURIComponent((name||'U').charAt(0).toUpperCase())}`;
+
+            toastBtn.onclick = () => {
+                toast.classList.add('hidden');
+                openChatDrawer();
+                selectChatConversation(conversation.id);
+            };
+            toast.classList.remove('hidden');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toast.classList.add('hidden'), 5000);
+
+            /* Browser notification works when permission is granted. */
+            if ('Notification' in window && Notification.permission === 'granted' && document.visibilityState !== 'visible') {
+                try {
+                    const n = new Notification(name, {
+                        body: messageText || 'New message',
+                        icon: photo || undefined,
+                        tag: 'uoo-sb-chat-' + conversation.id
+                    });
+                    n.onclick = () => {
+                        window.focus();
+                        openChatDrawer();
+                        selectChatConversation(conversation.id);
+                        n.close();
+                    };
+                } catch (e) {}
+            }
+        }
+
+        window.enableMessageNotifications = async function() {
+            if (!('Notification' in window)) {
+                showCustomAlert('Notifications', 'Is browser mein notifications supported nahi hain.', 'error');
+                return;
+            }
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') showCustomAlert('Notifications On', 'New chat messages ki notification ab show hogi.', 'success');
+                else showCustomAlert('Notifications Blocked', 'Browser settings se notifications allow karein.', 'error');
+            } catch (e) {
+                showCustomAlert('Notifications', 'Notification permission nahi mil saki.', 'error');
+            }
+        };
 
         function initChatRealtime() {
             if (!db || !currentUser || currentUser.isAnonymous) return;
             if (unsubscribeChats) unsubscribeChats();
 
             const chatsRef = collection(db, 'artifacts', appId, 'public', 'data', 'uoo_sb_chats');
-            unsubscribeChats = onSnapshot(chatsRef, async (snapshot) => {
+            unsubscribeChats = onSnapshot(chatsRef, (snapshot) => {
+                const previous = { ...knownUnreadSnapshot };
                 chatConversations = [];
                 snapshot.forEach((snap) => {
                     const data = snap.data() || {};
@@ -2052,8 +2210,25 @@
                     }
                 });
                 chatConversations.sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
+
+                let newestNotification = null;
+                const nextKnown = {};
+                chatConversations.forEach(c => {
+                    const unread = Number((c.unreadBy || {})[currentUser.uid] || 0);
+                    nextKnown[c.id] = unread;
+                    const was = Number(previous[c.id] || 0);
+                    const isOpen = activeChatId === c.id && !document.getElementById('chatDrawer')?.classList.contains('hidden');
+                    if (unread > was && !isOpen && c.lastSenderId && c.lastSenderId !== currentUser.uid) {
+                        newestNotification = c;
+                    }
+                });
+                knownUnreadSnapshot = nextKnown;
+
                 renderChatConversationList();
                 updateChatBadge();
+                if (newestNotification) {
+                    showMessageNotification(newestNotification, newestNotification.lastMessage || 'New message');
+                }
             }, (error) => {
                 console.error('Chat realtime error:', error);
                 renderChatConversationList();
@@ -2069,6 +2244,9 @@
             document.getElementById('chatDrawer').classList.remove('hidden');
             document.body.style.overflow = 'hidden';
             renderChatConversationList();
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission().catch(() => {});
+            }
             renderChatMessages();
         };
 
@@ -2221,8 +2399,9 @@
                 text: text || '',
                 imageUrl: imageUrl || '',
                 timestamp: now,
-                delivered: false,
-                seen: false
+                delivered: true,
+                seen: false,
+                verified: currentProfile?.verified !== false
             });
             const conversationRef = doc(db, 'artifacts', appId, 'public', 'data', 'uoo_sb_chats', activeChatId);
             const unreadPath = `unreadBy.${activeChatPartnerId}`;
@@ -2258,14 +2437,29 @@
             }
             list.innerHTML = chatConversations.map((c, index) => {
                 const otherIsSeller = c.sellerId !== currentUser.uid;
+                const otherId = otherIsSeller ? c.sellerId : c.buyerId;
                 const otherName = otherIsSeller ? (c.sellerName || 'Seller') : (c.buyerName || 'Buyer');
                 const otherPhoto = otherIsSeller ? c.sellerPhoto : c.buyerPhoto;
                 const initial = (otherName || 'U').charAt(0).toUpperCase();
+                const fallback = `https://placehold.co/80x80/16a34a/ffffff?text=${encodeURIComponent(initial)}`;
                 const unread = Number((c.unreadBy || {})[currentUser.uid] || 0);
                 const active = c.id === activeChatId;
                 return `<button onclick="selectChatConversation('${c.id}')" class="w-full text-left px-3 py-3 flex items-center gap-3 ${active ? 'bg-brand-50 dark:bg-brand-950/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800'} border-b border-slate-100 dark:border-slate-800 transition">
-                    <div class="relative flex-shrink-0"><img src="${otherPhoto || 'https://placehold.co/80x80/16a34a/ffffff?text=' + initial}" class="w-11 h-11 rounded-full object-cover border border-slate-200" onerror="this.src='https://placehold.co/80x80/16a34a/ffffff?text=${initial}'"><span class="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white dark:border-slate-900 bg-slate-400" data-presence-id="${otherIsSeller ? c.sellerId : c.buyerId}"></span></div>
-                    <div class="min-w-0 flex-1"><div class="flex items-center gap-2"><span class="font-bold text-sm truncate">${index + 1}. ${otherName}</span>${unread ? `<span class="ml-auto min-w-5 h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">${unread > 99 ? '99+' : unread}</span>` : ''}</div><p class="text-[11px] text-slate-400 truncate">${c.lastMessage || 'Conversation started'}</p></div>
+                    <div class="relative flex-shrink-0">
+                        <img src="${safeText(otherPhoto || fallback)}" onclick="event.stopPropagation(); openChatProfileImage('${safeText(otherPhoto || fallback)}')" class="w-11 h-11 rounded-full object-cover border border-slate-200 chat-avatar-click" onerror="this.src='${fallback}'">
+                        <span class="presence-dot absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white dark:border-slate-900 bg-slate-400" data-presence-id="${otherId}"></span>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-1.5 min-w-0">
+                            <span class="font-bold text-sm truncate">${index + 1}. ${safeText(otherName)}</span>
+                            ${getVerifiedTickHTML(c)}
+                            ${unread ? `<span class="ml-auto min-w-5 h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">${unread > 99 ? '99+' : unread}</span>` : ''}
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <p class="text-[11px] text-slate-400 truncate flex-1">${safeText(c.lastMessage || 'Conversation started')}</p>
+                            <span class="text-[9px] text-slate-400 flex-shrink-0">${c.updatedAt ? new Date(c.updatedAt).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : ''}</span>
+                        </div>
+                    </div>
                 </button>`;
             }).join('');
             refreshConversationPresence();
@@ -2273,17 +2467,24 @@
 
         async function refreshConversationPresence() {
             if (!db || !currentUser) return;
+            Object.values(presenceUnsubscribers).forEach(fn => { try { fn(); } catch(e) {} });
+            presenceUnsubscribers = {};
+
             const ids = [...new Set(chatConversations.flatMap(c => [c.sellerId, c.buyerId]).filter(id => id && id !== currentUser.uid))];
             for (const uid of ids) {
                 try {
                     const ref = doc(db, 'artifacts', appId, 'public', 'data', 'uoo_sb_profiles', uid);
-                    onSnapshot(ref, (snap) => {
-                        const online = isUserOnline(snap.data() || {});
+                    presenceUnsubscribers[uid] = onSnapshot(ref, (snap) => {
+                        const data = snap.data() || {};
+                        const online = isUserOnline(data);
                         document.querySelectorAll(`[data-presence-id="${uid}"]`).forEach(el => {
-                            el.className = `absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white dark:border-slate-900 ${online ? 'bg-green-500' : 'bg-slate-400'}`;
+                            el.className = `presence-dot absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white dark:border-slate-900 ${online ? 'bg-green-500' : 'bg-slate-400'}`;
                         });
                         const status = document.getElementById('activeChatStatus');
-                        if (status && activeChatPartnerId === uid) status.innerText = online ? 'Online' : 'Offline';
+                        if (status && activeChatPartnerId === uid) {
+                            status.innerText = online ? 'Online now' : `Offline • ${data.lastSeen ? new Date(data.lastSeen).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : 'Last seen unavailable'}`;
+                            status.className = `text-[10px] ${online ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-slate-400'}`;
+                        }
                     });
                 } catch (e) {}
             }
@@ -2310,14 +2511,24 @@
             const initial = (otherName || 'U').charAt(0).toUpperCase();
             if (header) {
                 header.classList.remove('hidden');
-                header.innerHTML = `<div class="flex items-center gap-2"><button onclick="goBackToChatList()" class="p-2 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700"><i class="fa-solid fa-arrow-left"></i></button><img src="${otherPhoto || 'https://placehold.co/80x80/16a34a/ffffff?text=' + initial}" class="w-10 h-10 rounded-full object-cover"><div class="min-w-0 flex-1"><div class="font-bold text-sm truncate">${otherName}</div><div id="activeChatStatus" class="text-[10px] text-slate-400">Offline</div></div><div class="text-[9px] text-slate-400 max-w-[100px] truncate">${active.adTitle || 'UOO S&B Ad'}</div></div>`;
+                const avatarUrl = otherPhoto || `https://placehold.co/80x80/16a34a/ffffff?text=${encodeURIComponent(initial)}`;
+                header.innerHTML = `<div class="flex items-center gap-2">
+                    <button onclick="goBackToChatList()" class="p-2 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 flex-shrink-0"><i class="fa-solid fa-arrow-left"></i></button>
+                    <img src="${safeText(avatarUrl)}" onclick="openChatProfileImage('${safeText(avatarUrl)}')" class="w-11 h-11 rounded-full object-cover border-2 border-white dark:border-slate-700 shadow cursor-pointer chat-avatar-click flex-shrink-0" onerror="this.src='https://placehold.co/80x80/16a34a/ffffff?text=${encodeURIComponent(initial)}'">
+                    <div class="min-w-0 flex-1">
+                        <div class="font-bold text-sm truncate flex items-center gap-1.5">${safeText(otherName)} ${getVerifiedTickHTML(active)}</div>
+                        <div id="activeChatStatus" class="text-[10px] text-slate-400">Checking status...</div>
+                    </div>
+                    <div class="hidden sm:block text-[9px] text-slate-400 max-w-[160px] truncate">${safeText(active.adTitle || 'UOO S&B Ad')}</div>
+                </div>`;
             }
             if (composer) composer.classList.remove('hidden');
             if (!chatMessages.length) { container.innerHTML = `<div class="text-center text-slate-400 py-10 text-sm px-4">Start the conversation about <b>${active.adTitle || 'this ad'}</b>.</div>`; return; }
             container.innerHTML = chatMessages.map(m => {
                 const mine = m.senderId === currentUser.uid || m.sender === 'You';
-                const img = m.imageUrl ? `<img src="${m.imageUrl}" class="max-w-[220px] sm:max-w-[280px] max-h-[280px] rounded-xl object-cover mb-1 cursor-pointer" onclick="window.open('${m.imageUrl}','_blank')">` : '';
-                return `<div class="flex flex-col ${mine ? 'items-end' : 'items-start'}"><div class="max-w-[88%] sm:max-w-[75%] rounded-2xl px-3 py-2 text-sm ${mine ? 'bg-brand-600 text-white rounded-br-none' : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-bl-none border border-slate-200 dark:border-slate-700'}">${img}${m.text ? `<div class="whitespace-pre-wrap break-words">${m.text}</div>` : ''}</div><span class="text-[10px] text-slate-400 mt-1 px-1">${m.timestamp ? new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : ''}${mine ? getTickHTML(m) : ''}</span></div>`;
+                const img = m.imageUrl ? `<img src="${safeText(m.imageUrl)}" class="max-w-[220px] sm:max-w-[320px] max-h-[320px] rounded-xl object-cover mb-1 cursor-pointer" onclick="openChatProfileImage('${safeText(m.imageUrl)}')" onerror="this.style.display='none'">` : '';
+                const senderLine = !mine && m.senderName ? `<div class="text-[9px] font-bold text-brand-600 dark:text-brand-400 mb-1 flex items-center gap-1">${safeText(m.senderName)} ${getVerifiedTickHTML(m)}</div>` : '';
+                return `<div class="flex flex-col ${mine ? 'items-end' : 'items-start'}"><div class="max-w-[88%] sm:max-w-[75%] rounded-2xl px-3 py-2 text-sm ${mine ? 'bg-brand-600 text-white rounded-br-none' : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-bl-none border border-slate-200 dark:border-slate-700'}">${senderLine}${img}${m.text ? `<div class="whitespace-pre-wrap break-words">${safeText(m.text)}</div>` : ''}</div><span class="text-[10px] text-slate-400 mt-1 px-1">${m.timestamp ? new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : ''}${mine ? getTickHTML(m) : ''}</span></div>`;
             }).join('');
             container.scrollTop = container.scrollHeight;
             refreshConversationPresence();
