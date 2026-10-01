@@ -186,6 +186,11 @@
                     <button onclick="filterCategory('Jobs')" class="category-btn flex items-center space-x-1.5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 whitespace-nowrap hover:bg-slate-100 dark:hover:bg-slate-700 transition" data-category="Jobs">
                         <i class="fa-solid fa-briefcase text-teal-500"></i><span>Jobs</span>
                     </button>
+                    <button onclick="filterCategory('Fashion')" class="category-btn flex items-center space-x-1.5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 whitespace-nowrap hover:bg-slate-100 dark:hover:bg-slate-700 transition" data-category="Fashion"><i class="fa-solid fa-shirt text-pink-500"></i><span>Fashion</span></button>
+                    <button onclick="filterCategory('Home')" class="category-btn flex items-center space-x-1.5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 whitespace-nowrap hover:bg-slate-100 dark:hover:bg-slate-700 transition" data-category="Home"><i class="fa-solid fa-couch text-amber-600"></i><span>Home</span></button>
+                    <button onclick="filterCategory('Services')" class="category-btn flex items-center space-x-1.5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 whitespace-nowrap hover:bg-slate-100 dark:hover:bg-slate-700 transition" data-category="Services"><i class="fa-solid fa-screwdriver-wrench text-blue-500"></i><span>Services</span></button>
+                    <button onclick="filterCategory('Animals')" class="category-btn flex items-center space-x-1.5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 whitespace-nowrap hover:bg-slate-100 dark:hover:bg-slate-700 transition" data-category="Animals"><i class="fa-solid fa-paw text-purple-500"></i><span>Animals</span></button>
+                    <button onclick="filterCategory('Books')" class="category-btn flex items-center space-x-1.5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 whitespace-nowrap hover:bg-slate-100 dark:hover:bg-slate-700 transition" data-category="Books"><i class="fa-solid fa-book text-indigo-500"></i><span>Books</span></button>
                 </div>
             </div>
 
@@ -480,8 +485,8 @@
     </div>
 
     <!-- CHAT DRAWER -->
-    <div id="chatDrawer" class="fixed inset-0 z-[60] hidden bg-black/60 backdrop-blur-sm flex justify-end">
-        <div class="bg-white dark:bg-slate-900 w-full sm:max-w-2xl h-full flex flex-col shadow-2xl border-l border-slate-200 dark:border-slate-800">
+    <div id="chatDrawer" class="fixed inset-0 z-[60] hidden bg-white dark:bg-slate-950">
+        <div class="bg-white dark:bg-slate-900 w-full h-full flex flex-col shadow-2xl">
             <div class="p-3 sm:p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
                 <div class="flex items-center space-x-3 min-w-0">
                     <div class="bg-brand-600 text-white w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -514,6 +519,19 @@
                     <button onclick="sendChatMessage()" class="bg-brand-600 hover:bg-brand-700 text-white w-10 h-10 rounded-xl font-bold shadow flex-shrink-0"><i class="fa-solid fa-paper-plane"></i></button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- CHAT UPLOAD PROGRESS -->
+    <div id="chatUploadProgress" class="fixed inset-0 z-[90] hidden bg-black/60 backdrop-blur-sm items-center justify-center p-4">
+        <div class="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-11 h-11 rounded-2xl bg-brand-100 dark:bg-brand-950/40 text-brand-600 flex items-center justify-center"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+                <div class="min-w-0 flex-1"><h3 class="font-black">Sending image</h3><p id="chatUploadFileName" class="text-xs text-slate-400 truncate">Preparing...</p></div>
+                <b id="chatUploadPercent" class="text-brand-600">0%</b>
+            </div>
+            <div class="h-2.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden"><div id="chatUploadBar" class="progress-bar-fill h-full rounded-full" style="width:0%"></div></div>
+            <p class="text-[11px] text-slate-400 mt-3 text-center">Please wait while your image is uploaded.</p>
         </div>
     </div>
 
@@ -630,6 +648,7 @@
                 } else {
                     await signInAnonymously(auth);
                 }
+                populateUooSelects();
                 initRealtimeListener();
             } catch (err) {
                 console.error("Firebase init error:", err);
@@ -1882,6 +1901,22 @@
             localStorage.setItem('uoosb_dark', document.documentElement.classList.contains('dark') ? '1' : '0');
         };
 
+        // ==================== PAKISTAN CITIES & CATEGORIES ====================
+        const PAKISTAN_CITIES_127 = [
+            'Abbottabad','Ahmedpur East','Alipur','Arifwala','Attock','Badin','Bahawalnagar','Bahawalpur','Bannu','Batkhela','Bhakkar','Bhalwal','Bhera','Burewala','Chakwal','Chaman','Charsadda','Chichawatni','Chiniot','Chishtian','Chunian','Dadu','Daska','Dera Ghazi Khan','Dera Ismail Khan','Dera Murad Jamali','Dera Allah Yar','Dipalpur','Faisalabad','Fateh Jang','Fatehpur','Ghotki','Gilgit','Gojra','Gujranwala','Gujrat','Gwadar','Hafizabad','Hangu','Haripur','Hasilpur','Haveli Lakha','Hyderabad','Islamabad','Jacobabad','Jahanian','Jalalpur Jattan','Jampur','Jaranwala','Jhelum','Kabirwala','Kahror Pakka','Kamalia','Kamoke','Karachi','Kasur','Khairpur','Khanewal','Khanpur','Khushab','Khuzdar','Kohat','Kot Addu','Kotli','Kharian','Lahore','Lakki Marwat','Larkana','Layyah','Lodhran','Loralai','Mandi Bahauddin','Mansehra','Mardan','Mastung','Matiari','Mian Channu','Mianwali','Mirpur','Mirpur Khas','Multan','Muridke','Murree','Muzaffarabad','Muzaffargarh','Nankana Sahib','Narowal','Nawabshah','Nowshera','Okara','Pano Aqil','Pakpattan','Peshawar','Pind Dadan Khan','Pindi Bhattian','Pirmahal','Quetta','Rahim Yar Khan','Rawalakot','Rawalpindi','Renala Khurd','Risalpur','Sadiqabad','Sahiwal','Sambrial','Sangla Hill','Sargodha','Shahkot','Shakargarh','Sheikhupura','Shikarpur','Sialkot','Sibi','Sukkur','Swabi','Swat','Talagang','Tando Adam','Tando Allahyar','Taxila','Toba Tek Singh','Turbat','Umerkot','Vehari','Wah Cantt','Wazirabad','Zhob'
+        ];
+        const UOO_CATEGORIES = ['All','Mobiles','Vehicles','Property','Electronics','Bikes','Jobs','Fashion','Home','Services','Animals','Books','Kids','Sports','Education','Business','Agriculture','Beauty','Health','Food','Other'];
+        function populateUooSelects(){
+            const locs = ['All', ...PAKISTAN_CITIES_127];
+            ['headerLocation','mobileLocation','adLocation'].forEach(id=>{
+                const el=document.getElementById(id); if(!el) return;
+                const current=el.value || 'All';
+                el.innerHTML=locs.map(x=>`<option value="${x}">${x==='All' ? 'All Cities' : x}</option>`).join('');
+                el.value=locs.includes(current)?current:'All';
+            });
+            const cat=document.getElementById('adCategory');
+            if(cat){ const cur=cat.value; cat.innerHTML=UOO_CATEGORIES.filter(x=>x!=='All').map(x=>`<option value="${x}">${x}</option>`).join(''); if(UOO_CATEGORIES.includes(cur)) cat.value=cur; }
+        }
         // ==================== REAL CHAT ====================
         function getChatConversationId(userA, userB, adId) {
             return [userA, userB].sort().join('_') + '_' + adId;
@@ -1956,12 +1991,14 @@
                 return;
             }
             document.getElementById('chatDrawer').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
             renderChatConversationList();
             renderChatMessages();
         };
 
         window.closeChatDrawer = function() {
             document.getElementById('chatDrawer').classList.add('hidden');
+            document.body.style.overflow = '';
         };
 
         window.startChatWithSeller = async function(itemTitle, itemId) {
@@ -2004,6 +2041,7 @@
                 subscribeToActiveChat(conversationId);
                 closeDetailModal();
                 document.getElementById('chatDrawer').classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
                 renderChatConversationList();
                 renderChatMessages();
             } catch (error) {
@@ -2075,11 +2113,24 @@
             if (!file.type.startsWith('image/')) return showCustomAlert('Invalid Image', 'Please select an image.', 'error');
             if (file.size > MAX_FILE_SIZE) return showCustomAlert('File Too Large', 'Image 5MB se choti honi chahiye.', 'error');
             try {
-                const url = await uploadToCloudinaryWithProgress(file, () => {});
+                const box=document.getElementById('chatUploadProgress');
+                const bar=document.getElementById('chatUploadBar');
+                const pct=document.getElementById('chatUploadPercent');
+                const name=document.getElementById('chatUploadFileName');
+                if(box){ box.classList.remove('hidden'); box.classList.add('flex'); }
+                if(name) name.textContent=file.name;
+                const url = await uploadToCloudinaryWithProgress(file, (progress)=>{
+                    if(bar) bar.style.width=progress+'%';
+                    if(pct) pct.textContent=progress+'%';
+                });
                 await sendChatPayload('', url);
+                if(bar) bar.style.width='100%'; if(pct) pct.textContent='100%';
             } catch (error) {
                 console.error(error);
                 showCustomAlert('Image Error', error.message || 'Image send nahi ho saki.', 'error');
+            } finally {
+                const box=document.getElementById('chatUploadProgress');
+                if(box){ box.classList.add('hidden'); box.classList.remove('flex'); }
             }
         };
 
@@ -2102,7 +2153,7 @@
             const currentUnread = Number((chatConversations.find(c => c.id === activeChatId)?.unreadBy || {})[activeChatPartnerId] || 0);
             await setDoc(conversationRef, {
                 updatedAt: now,
-                lastMessage: imageUrl ? '📷 Photo' : text,
+                lastMessage: imageUrl ? 'Photo' : text,
                 lastSenderId: currentUser.uid,
                 [`unreadBy.${activeChatPartnerId}`]: currentUnread + 1
             }, { merge: true });
@@ -2168,12 +2219,15 @@
             const header = document.getElementById('activeChatHeader');
             if (!container) return;
             const active = chatConversations.find(c => c.id === activeChatId);
+            const list = document.getElementById('chatConversationList');
             if (!active) {
+                if (list) list.classList.remove('hidden');
                 if (composer) composer.classList.add('hidden');
                 if (header) header.classList.add('hidden');
                 container.innerHTML = `<div class="h-full flex items-center justify-center text-center text-slate-400 text-sm px-6">Open an ad and tap <b class="mx-1">Message</b> to contact the seller.</div>`;
                 return;
             }
+            if (list) list.classList.add('hidden');
             const otherIsSeller = active.sellerId !== currentUser.uid;
             const otherName = otherIsSeller ? (active.sellerName || 'Seller') : (active.buyerName || 'Buyer');
             const otherPhoto = otherIsSeller ? active.sellerPhoto : active.buyerPhoto;
