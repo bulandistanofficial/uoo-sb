@@ -1,0 +1,2252 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta name="theme-color" content="#16a34a">
+    <title>UOO S&B - Local Classifieds & Marketplace</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4', 100: '#dcfce7', 200: '#bbf7d0',
+                            500: '#22c55e', 600: '#16a34a', 700: '#15803d',
+                            800: '#166534', 900: '#14532d',
+                        }
+                    },
+                    screens: { 'xs': '400px' }
+                }
+            }
+        }
+    </script>
+    <style>
+        * { -webkit-tap-highlight-color: transparent; }
+        html { scroll-behavior: smooth; }
+        body { -webkit-font-smoothing: antialiased; overscroll-behavior-y: none; }
+        .scrollbar-none::-webkit-scrollbar { display: none; }
+        .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+        .line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .glass { background: rgba(255,255,255,0.9); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        .dark .glass { background: rgba(15,23,42,0.9); }
+        .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .progress-bar-fill {
+            transition: width 0.3s ease-out;
+            background: linear-gradient(90deg, #16a34a, #22c55e, #4ade80);
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite linear;
+        }
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        .fade-in { animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .spin { animation: spin 1s linear infinite; }
+        @media (max-width: 640px) {
+            #chatDrawer > div { max-width: 100%; width: 100%; height: 100dvh; max-height: 100dvh; border-radius: 0; }
+            #chatMessagesList { min-height: 0; }
+        }
+        img { max-width: 100%; }
+        button, a { touch-action: manipulation; }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="h-full bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col transition-colors duration-200">
+
+    <!-- HEADER -->
+    <header class="sticky top-0 z-40 glass border-b border-slate-200 dark:border-slate-800">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2 sm:gap-4">
+            <div class="flex items-center space-x-2 sm:space-x-3 cursor-pointer group flex-shrink-0" onclick="filterCategory('All'); showHomeView()">
+                <div class="bg-gradient-to-tr from-brand-600 to-emerald-400 text-white w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg shadow-brand-500/30 group-hover:scale-105 transition">
+                    <i class="fa-solid fa-store text-lg sm:text-2xl"></i>
+                </div>
+                <div class="hidden xs:block">
+                    <span class="text-lg sm:text-2xl font-black tracking-wider bg-gradient-to-r from-brand-600 to-teal-500 bg-clip-text text-transparent">UOO S&B</span>
+                    <p class="text-[9px] sm:text-[10px] uppercase font-bold tracking-widest text-slate-400 hidden sm:block">Secure & Buy</p>
+                </div>
+            </div>
+
+            <div class="hidden md:flex flex-1 max-w-xl items-center bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-1.5 focus-within:ring-2 focus-within:ring-brand-500 transition">
+                <div class="flex items-center space-x-2 px-3 border-r border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-300">
+                    <i class="fa-solid fa-location-dot text-brand-600"></i>
+                    <select id="headerLocation" onchange="handleSearch()" class="bg-transparent focus:outline-none cursor-pointer text-sm">
+                        <option value="All">All Cities</option>
+                        <option value="Karachi">Karachi</option>
+                        <option value="Lahore">Lahore</option>
+                        <option value="Islamabad">Islamabad</option>
+                        <option value="Sahiwal">Sahiwal</option>
+                        <option value="Faisalabad">Faisalabad</option>
+                        <option value="Rawalpindi">Rawalpindi</option>
+                    </select>
+                </div>
+                <div class="flex-1 flex items-center px-3">
+                    <input type="text" id="searchInput" oninput="handleSearch()" placeholder="Find Cars, Mobiles, Property..." class="w-full bg-transparent border-none focus:outline-none text-sm">
+                </div>
+                <button onclick="handleSearch()" class="bg-brand-600 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-brand-700 transition">
+                    <i class="fa-solid fa-search"></i>
+                </button>
+            </div>
+
+            <div class="flex items-center space-x-1.5 sm:space-x-3 flex-shrink-0">
+                <button onclick="toggleDarkMode()" class="p-2 sm:p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+                    <i class="fa-solid fa-moon dark:hidden text-sm sm:text-base"></i>
+                    <i class="fa-solid fa-sun hidden dark:block text-sm sm:text-base"></i>
+                </button>
+                <button onclick="openChatDrawer()" class="relative p-2 sm:p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+                    <i class="fa-solid fa-comments text-sm sm:text-base"></i>
+                    <span id="chatBadge" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold">0</span>
+                </button>
+
+                <div id="authHeaderContainer"></div>
+
+                <button onclick="checkAuthAndPostAd()" class="flex items-center space-x-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl font-bold shadow-xl shadow-orange-500/20 transition transform active:scale-95 text-sm sm:text-base">
+                    <i class="fa-solid fa-plus-circle text-sm sm:text-lg"></i>
+                    <span class="hidden sm:inline">SELL</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="md:hidden px-3 pb-3 flex gap-2">
+            <div class="flex-1 flex items-center bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2">
+                <i class="fa-solid fa-search text-slate-400 mr-2 text-sm"></i>
+                <input type="text" id="mobileSearchInput" oninput="handleSearch()" placeholder="Search UOO S&B..." class="w-full bg-transparent focus:outline-none text-sm">
+            </div>
+            <div class="flex items-center bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2">
+                <i class="fa-solid fa-location-dot text-brand-600 text-sm"></i>
+                <select id="mobileLocation" onchange="handleSearch()" class="bg-transparent focus:outline-none text-xs py-2 pl-1">
+                    <option value="All">All</option>
+                    <option value="Karachi">Karachi</option>
+                    <option value="Lahore">Lahore</option>
+                    <option value="Islamabad">Islamabad</option>
+                    <option value="Sahiwal">Sahiwal</option>
+                    <option value="Faisalabad">Faisalabad</option>
+                    <option value="Rawalpindi">Rawalpindi</option>
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 pb-24 md:pb-6">
+        <div id="homeView">
+            <div class="relative bg-gradient-to-r from-brand-900 via-emerald-800 to-teal-900 rounded-2xl sm:rounded-3xl p-5 sm:p-10 mb-6 sm:mb-8 overflow-hidden shadow-2xl text-white">
+                <div class="absolute -right-8 -bottom-8 opacity-10 text-8xl sm:text-9xl">
+                    <i class="fa-solid fa-store"></i>
+                </div>
+                <div class="relative z-10 max-w-2xl">
+                    <span class="bg-amber-400 text-slate-950 text-[10px] sm:text-xs font-black uppercase px-2.5 py-1 rounded-full mb-2 sm:mb-3 inline-block">UOO S&B Verified Marketplace</span>
+                    <h1 class="text-2xl sm:text-4xl font-black tracking-tight mb-2 sm:mb-3 leading-tight">Buy & Sell Anything Instantly Near You</h1>
+                    <p class="text-xs sm:text-base text-emerald-100 mb-4 sm:mb-6">Verified cars, properties, mobiles & more with secure accounts and live chat.</p>
+                    <div class="flex flex-wrap gap-2 sm:gap-3">
+                        <button onclick="filterCategory('All')" class="bg-white text-slate-900 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow hover:bg-emerald-50 transition">Explore All</button>
+                        <button onclick="checkAuthAndPostAd()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm shadow transition">Post Free Ad</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-6 sm:mb-8">
+                <div class="flex items-center justify-between mb-3 sm:mb-4">
+                    <h2 class="text-base sm:text-lg font-bold">Browse Categories</h2>
+                </div>
+                <div class="flex items-center space-x-2 sm:space-x-3 overflow-x-auto pb-2 scrollbar-none" id="categoryPills">
+                    <button onclick="filterCategory('All')" class="category-btn flex items-center space-x-1.5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold bg-brand-600 text-white whitespace-nowrap shadow-lg shadow-brand-600/30 transition" data-category="All">
+                        <i class="fa-solid fa-border-all"></i><span>All</span>
+                    </button>
+                    <button onclick="filterCategory('Mobiles')" class="category-btn flex items-center space-x-1.5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 whitespace-nowrap hover:bg-slate-100 dark:hover:bg-slate-700 transition" data-category="Mobiles">
+                        <i class="fa-solid fa-mobile-screen text-blue-500"></i><span>Mobiles</span>
+                    </button>
+                    <button onclick="filterCategory('Vehicles')" class="category-btn flex items-center space-x-1.5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 whitespace-nowrap hover:bg-slate-100 dark:hover:bg-slate-700 transition" data-category="Vehicles">
+                        <i class="fa-solid fa-car text-emerald-500"></i><span>Vehicles</span>
+                    </button>
+                    <button onclick="filterCategory('Property')" class="category-btn flex items-center space-x-1.5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 whitespace-nowrap hover:bg-slate-100 dark:hover:bg-slate-700 transition" data-category="Property">
+                        <i class="fa-solid fa-house text-amber-500"></i><span>Property</span>
+                    </button>
+                    <button onclick="filterCategory('Electronics')" class="category-btn flex items-center space-x-1.5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 whitespace-nowrap hover:bg-slate-100 dark:hover:bg-slate-700 transition" data-category="Electronics">
+                        <i class="fa-solid fa-laptop text-purple-500"></i><span>Electronics</span>
+                    </button>
+                    <button onclick="filterCategory('Bikes')" class="category-btn flex items-center space-x-1.5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 whitespace-nowrap hover:bg-slate-100 dark:hover:bg-slate-700 transition" data-category="Bikes">
+                        <i class="fa-solid fa-motorcycle text-red-500"></i><span>Bikes</span>
+                    </button>
+                    <button onclick="filterCategory('Jobs')" class="category-btn flex items-center space-x-1.5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 whitespace-nowrap hover:bg-slate-100 dark:hover:bg-slate-700 transition" data-category="Jobs">
+                        <i class="fa-solid fa-briefcase text-teal-500"></i><span>Jobs</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between mb-4 sm:mb-6 gap-2">
+                <h3 class="text-base sm:text-xl font-extrabold" id="resultCountTitle">Fresh Recommendations</h3>
+                <select id="sortBy" onchange="sortAndRenderAds()" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium focus:outline-none">
+                    <option value="newest">Newest</option>
+                    <option value="price-low">Price ↑</option>
+                    <option value="price-high">Price ↓</option>
+                </select>
+            </div>
+
+            <div id="adsGrid" class="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6"></div>
+
+            <div id="emptyState" class="hidden flex flex-col items-center justify-center py-16 sm:py-20 text-center">
+                <div class="bg-slate-100 dark:bg-slate-800 p-5 sm:p-6 rounded-full text-slate-400 mb-4">
+                    <i class="fa-solid fa-folder-open text-4xl sm:text-5xl"></i>
+                </div>
+                <h3 class="text-lg sm:text-xl font-bold">No ads found</h3>
+                <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 px-4">Try a different keyword, category, or city.</p>
+            </div>
+        </div>
+
+        <div id="profileView" class="hidden"></div>
+    </main>
+
+    <nav id="bottomNav" class="hidden md:hidden fixed bottom-0 left-0 right-0 z-40 glass border-t border-slate-200 dark:border-slate-800 safe-bottom">
+        <div class="grid grid-cols-4 h-16">
+            <button onclick="showHomeView()" class="flex flex-col items-center justify-center space-y-1 text-brand-600" id="navHome">
+                <i class="fa-solid fa-house text-lg"></i>
+                <span class="text-[10px] font-bold">Home</span>
+            </button>
+            <button onclick="openChatDrawer()" class="flex flex-col items-center justify-center space-y-1 text-slate-400 relative" id="navChat">
+                <i class="fa-solid fa-comments text-lg"></i>
+                <span class="text-[10px] font-bold">Chats</span>
+                <span id="chatBadgeMobile" class="hidden absolute top-2 right-1/4 bg-red-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">0</span>
+            </button>
+            <button onclick="checkAuthAndPostAd()" class="flex flex-col items-center justify-center space-y-1 text-slate-400" id="navSell">
+                <i class="fa-solid fa-circle-plus text-lg"></i>
+                <span class="text-[10px] font-bold">Sell</span>
+            </button>
+            <button onclick="openProfileOrLogin()" class="flex flex-col items-center justify-center space-y-1 text-slate-400" id="navProfile">
+                <i class="fa-solid fa-user text-lg"></i>
+                <span class="text-[10px] font-bold">Profile</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- AUTH MODAL -->
+    <div id="authModal" class="fixed inset-0 z-[60] hidden bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full p-5 sm:p-8 shadow-2xl border border-slate-100 dark:border-slate-800 relative max-h-[90vh] overflow-y-auto">
+            <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-2 rounded-xl bg-slate-100 dark:bg-slate-800">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+            <div class="text-center mb-6">
+                <div class="w-14 h-14 bg-brand-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-bold shadow-lg shadow-brand-500/30">
+                    <i class="fa-solid fa-user-lock"></i>
+                </div>
+                <h3 id="authModalTitle" class="text-xl sm:text-2xl font-black">Welcome to UOO S&B</h3>
+                <p id="authModalSub" class="text-xs text-slate-400 mt-1">Sign in or create an account</p>
+            </div>
+
+            <form id="authForm" onsubmit="handleAuthSubmit(event)" class="space-y-4">
+                <div id="nameFieldContainer" class="hidden">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Full Name *</label>
+                    <input type="text" id="authName" placeholder="e.g. Ali Khan" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm font-medium">
+                </div>
+                <div id="phoneFieldContainer" class="hidden">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Phone / WhatsApp *</label>
+                    <input type="tel" id="authPhone" placeholder="e.g. 03001234567" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm font-medium">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Email *</label>
+                    <input type="email" id="authEmail" required placeholder="name@example.com" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm font-medium">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Password *</label>
+                    <input type="password" id="authPassword" required placeholder="••••••••" minlength="6" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm font-medium">
+                </div>
+                <button type="submit" id="authSubmitBtn" class="w-full bg-brand-600 hover:bg-brand-700 text-white py-3.5 rounded-2xl font-bold text-sm shadow-xl shadow-brand-500/30 transition">Sign In</button>
+            </form>
+
+            <div class="mt-6 text-center text-xs">
+                <span id="authToggleText" class="text-slate-400">Don't have an account?</span>
+                <button onclick="toggleAuthMode()" id="authToggleBtn" class="font-bold text-brand-600 dark:text-brand-400 ml-1 hover:underline">Create Account</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- POST AD MODAL -->
+    <div id="adModal" class="fixed inset-0 z-[60] hidden bg-black/70 backdrop-blur-sm flex items-start sm:items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-xl w-full p-5 sm:p-8 shadow-2xl border border-slate-100 dark:border-slate-800 my-4 sm:my-8">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 mb-4">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-amber-500 text-white p-2 rounded-xl"><i class="fa-solid fa-bullhorn"></i></div>
+                    <div>
+                        <h2 class="text-base sm:text-xl font-bold">Post Your Ad</h2>
+                        <p class="text-[10px] sm:text-xs text-slate-400">Cloudinary Secure Upload</p>
+                    </div>
+                </div>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-2 rounded-xl bg-slate-100 dark:bg-slate-800">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form id="adForm" onsubmit="handlePostAd(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Ad Title *</label>
+                    <input type="text" id="adTitle" required maxlength="150" placeholder="e.g. Honda Civic Oriel 2023" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm font-medium">
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Price (PKR) *</label>
+                        <input type="number" id="adPrice" required min="0" placeholder="e.g. 8500000" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm font-medium">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Category *</label>
+                        <select id="adCategory" onchange="toggleCategoryFields()" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm font-medium">
+                            <option value="Mobiles">Mobiles & Tablets</option>
+                            <option value="Vehicles">Vehicles & Cars</option>
+                            <option value="Property">Property & Plots</option>
+                            <option value="Electronics">Electronics</option>
+                            <option value="Bikes">Bikes & Scooters</option>
+                            <option value="Jobs">Jobs & Services</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">City *</label>
+                        <select id="adLocation" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm font-medium">
+                            <option value="Karachi">Karachi</option>
+                            <option value="Lahore">Lahore</option>
+                            <option value="Islamabad">Islamabad</option>
+                            <option value="Sahiwal">Sahiwal</option>
+                            <option value="Faisalabad">Faisalabad</option>
+                            <option value="Rawalpindi">Rawalpindi</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Condition *</label>
+                        <select id="adCondition" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm font-medium">
+                            <option value="Brand New">Brand New</option>
+                            <option value="Like New">Like New</option>
+                            <option value="Good Condition">Good Condition</option>
+                            <option value="Fair / Used">Fair / Used</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="dynamicSpecsContainer" class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-100 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
+                    <div>
+                        <label id="specLabel1" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Model / Year</label>
+                        <input type="text" id="adSpec1" class="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none text-sm">
+                    </div>
+                    <div>
+                        <label id="specLabel2" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Mileage / Size</label>
+                        <input type="text" id="adSpec2" class="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none text-sm">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Seller Phone / WhatsApp *</label>
+                    <input type="tel" id="adPhone" required placeholder="e.g. 03001234567" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm font-medium">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Description *</label>
+                    <textarea id="adDescription" rows="3" required maxlength="3000" placeholder="Complete specifications..." class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm font-medium"></textarea>
+                </div>
+
+                <!-- 5 IMAGES UPLOAD -->
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Item Photos <span class="text-brand-600">(Max 5)</span></label>
+                        <span id="imageCounter" class="text-xs font-bold text-brand-600">0 / 5</span>
+                    </div>
+                    <label class="flex flex-col items-center justify-center w-full h-24 sm:h-28 border-2 border-slate-300 dark:border-slate-700 border-dashed rounded-2xl cursor-pointer bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition" id="uploadLabel">
+                        <div class="flex flex-col items-center justify-center py-3 px-4 text-center">
+                            <i class="fa-solid fa-cloud-arrow-up text-2xl text-brand-500 mb-1"></i>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 font-bold">Click to add photos</p>
+                            <p class="text-[10px] text-slate-400 mt-0.5">JPG, PNG, WebP • Max 5MB each</p>
+                        </div>
+                        <input type="file" id="adImageFile" accept="image/*" multiple class="hidden" onchange="handleImageSelect(event)">
+                    </label>
+                    <div id="multiPreviewContainer" class="hidden mt-3 grid grid-cols-3 sm:grid-cols-5 gap-2"></div>
+                </div>
+
+                <!-- UPLOAD PROGRESS PANEL -->
+                <div id="uploadProgressPanel" class="hidden bg-gradient-to-br from-brand-50 to-emerald-50 dark:from-slate-800 dark:to-slate-800/70 border-2 border-brand-200 dark:border-brand-900/50 rounded-2xl p-4 fade-in">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center">
+                                <i class="fa-solid fa-cloud-arrow-up text-white text-sm spin"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold text-slate-800 dark:text-slate-100" id="uploadStatusText">Uploading...</p>
+                                <p class="text-[10px] text-slate-500 dark:text-slate-400" id="uploadFileText">Preparing files...</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-2xl font-black text-brand-600 dark:text-brand-400" id="uploadPercentText">0%</div>
+                            <div class="text-[10px] text-slate-500 dark:text-slate-400" id="uploadTimeText">calculating...</div>
+                        </div>
+                    </div>
+
+                    <div class="relative w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden mb-3">
+                        <div id="uploadProgressBar" class="progress-bar-fill h-full rounded-full" style="width: 0%"></div>
+                    </div>
+
+                    <div id="uploadImageList" class="space-y-1.5 max-h-40 overflow-y-auto"></div>
+                </div>
+
+                <div class="pt-2 flex items-center justify-end space-x-3">
+                    <button type="button" onclick="closeModal()" class="px-4 sm:px-5 py-3 rounded-2xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition">Cancel</button>
+                    <button type="submit" id="submitBtn" class="bg-brand-600 hover:bg-brand-700 text-white px-5 sm:px-7 py-3 rounded-2xl text-sm font-bold shadow-xl shadow-brand-500/30 transition flex items-center space-x-2 disabled:opacity-60 disabled:cursor-not-allowed">
+                        <span id="submitBtnText">Post Ad Now</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- DETAIL MODAL -->
+    <div id="detailModal" class="fixed inset-0 z-[60] hidden bg-black/80 backdrop-blur-md flex items-start sm:items-center justify-center p-0 sm:p-4 overflow-y-auto">
+        <div class="bg-white dark:bg-slate-900 rounded-none sm:rounded-3xl max-w-4xl w-full overflow-hidden shadow-2xl border-0 sm:border border-slate-100 dark:border-slate-800 sm:my-8 min-h-full sm:min-h-0">
+            <div id="detailContentContainer"></div>
+        </div>
+    </div>
+
+    <!-- EDIT PROFILE MODAL -->
+    <div id="editProfileModal" class="fixed inset-0 z-[60] hidden bg-black/70 backdrop-blur-sm flex items-start sm:items-center justify-center p-3 sm:p-4 overflow-y-auto">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-5 sm:p-8 shadow-2xl border border-slate-100 dark:border-slate-800 my-4">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 mb-4">
+                <h2 class="text-lg sm:text-xl font-bold">Edit Profile</h2>
+                <button onclick="closeEditProfileModal()" class="text-slate-400 p-2 rounded-xl bg-slate-100 dark:bg-slate-800">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <form id="editProfileForm" onsubmit="handleUpdateProfile(event)" class="space-y-4">
+                <div class="flex justify-center">
+                    <div class="relative">
+                        <img id="editProfileAvatar" src="https://placehold.co/120x120/16a34a/ffffff?text=U" class="w-24 h-24 rounded-full object-cover border-4 border-brand-500">
+                        <label class="absolute bottom-0 right-0 bg-brand-600 text-white w-8 h-8 rounded-full flex items-center justify-center cursor-pointer shadow-lg">
+                            <i class="fa-solid fa-camera text-xs"></i>
+                            <input type="file" id="profilePhotoInput" accept="image/*" class="hidden" onchange="previewProfilePhoto(event)">
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Display Name *</label>
+                    <input type="text" id="editProfileName" required class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Phone / WhatsApp *</label>
+                    <input type="tel" id="editProfilePhone" required class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">City</label>
+                    <select id="editProfileCity" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm">
+                        <option value="Karachi">Karachi</option>
+                        <option value="Lahore">Lahore</option>
+                        <option value="Islamabad">Islamabad</option>
+                        <option value="Sahiwal">Sahiwal</option>
+                        <option value="Faisalabad">Faisalabad</option>
+                        <option value="Rawalpindi">Rawalpindi</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">Bio</label>
+                    <textarea id="editProfileBio" rows="2" maxlength="200" placeholder="Apne baare me kuch likhein..." class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm"></textarea>
+                </div>
+
+                <div id="profileUploadProgress" class="hidden bg-brand-50 dark:bg-slate-800 border border-brand-200 dark:border-brand-900/50 rounded-2xl p-3">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold text-slate-700 dark:text-slate-200">Uploading photo...</span>
+                        <span class="text-xs font-black text-brand-600" id="profileUploadPercent">0%</span>
+                    </div>
+                    <div class="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                        <div id="profileUploadBar" class="progress-bar-fill h-full rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 pt-2">
+                    <button type="button" onclick="closeEditProfileModal()" class="flex-1 px-5 py-3 rounded-2xl text-sm font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800">Cancel</button>
+                    <button type="submit" id="saveProfileBtn" class="flex-1 bg-brand-600 hover:bg-brand-700 text-white px-5 py-3 rounded-2xl text-sm font-bold shadow-xl shadow-brand-500/30 transition disabled:opacity-60">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- CHAT DRAWER -->
+    <div id="chatDrawer" class="fixed inset-0 z-[60] hidden bg-black/60 backdrop-blur-sm flex justify-end">
+        <div class="bg-white dark:bg-slate-900 w-full sm:max-w-2xl h-full flex flex-col shadow-2xl border-l border-slate-200 dark:border-slate-800">
+            <div class="p-3 sm:p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
+                <div class="flex items-center space-x-3 min-w-0">
+                    <div class="bg-brand-600 text-white w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <i class="fa-solid fa-comments"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <h3 class="font-bold text-base truncate">UOO S&B Messenger</h3>
+                        <p class="text-xs text-slate-400 truncate">Chat with buyers and sellers</p>
+                    </div>
+                </div>
+                <button onclick="closeChatDrawer()" class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl flex-shrink-0">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div id="chatConversationList" class="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 max-h-44 overflow-y-auto"></div>
+
+            <div id="activeChatHeader" class="hidden p-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40"></div>
+            <div id="chatMessagesList" class="flex-1 p-3 sm:p-4 overflow-y-auto space-y-3 bg-slate-50/50 dark:bg-slate-950/50">
+                <div class="h-full flex items-center justify-center text-center text-slate-400 text-sm px-6">
+                    Open an ad and tap <b class="mx-1">Message</b> to contact the seller.
+                </div>
+            </div>
+
+            <div id="chatComposer" class="hidden p-2 sm:p-3 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 safe-bottom">
+                <div class="flex items-center gap-2">
+                    <input id="chatImageInput" type="file" accept="image/*" class="hidden" onchange="handleChatImageSelect(event)">
+                    <button onclick="triggerChatImage()" class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-brand-600 flex items-center justify-center flex-shrink-0" title="Send image"><i class="fa-solid fa-image"></i></button>
+                    <input type="text" id="chatInputBox" placeholder="Type a message..." onkeypress="if(event.key==='Enter') sendChatMessage()" class="flex-1 min-w-0 px-4 py-2.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                    <button onclick="sendChatMessage()" class="bg-brand-600 hover:bg-brand-700 text-white w-10 h-10 rounded-xl font-bold shadow flex-shrink-0"><i class="fa-solid fa-paper-plane"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ALERT MODAL -->
+    <div id="alertModal" class="fixed inset-0 z-[70] hidden bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl border border-slate-100 dark:border-slate-800">
+            <div id="alertIcon" class="w-14 h-14 rounded-2xl bg-brand-100 text-brand-600 flex items-center justify-center mx-auto mb-4 text-2xl">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <h3 id="alertTitle" class="text-xl font-bold mb-1">Success</h3>
+            <p id="alertMessage" class="text-sm text-slate-500 dark:text-slate-400 mb-6">Action completed.</p>
+            <button onclick="closeAlert()" class="w-full bg-brand-600 hover:bg-brand-700 text-white py-3 rounded-2xl font-bold transition shadow-lg shadow-brand-500/30">OK</button>
+        </div>
+    </div>
+
+    <!-- CONFIRM MODAL -->
+    <div id="confirmModal" class="fixed inset-0 z-[70] hidden bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-sm w-full p-6 text-center shadow-2xl border border-slate-100 dark:border-slate-800">
+            <div class="w-14 h-14 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4 text-2xl">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h3 id="confirmTitle" class="text-xl font-bold mb-1">Are you sure?</h3>
+            <p id="confirmMessage" class="text-sm text-slate-500 dark:text-slate-400 mb-6">This action cannot be undone.</p>
+            <div class="flex gap-3">
+                <button onclick="closeConfirm()" class="flex-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 py-3 rounded-2xl font-bold transition">Cancel</button>
+                <button id="confirmBtn" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-3 rounded-2xl font-bold transition shadow-lg shadow-red-500/30">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
+        import { 
+            getAuth, signInAnonymously, signInWithCustomToken, 
+            createUserWithEmailAndPassword, signInWithEmailAndPassword, 
+            signOut, onAuthStateChanged, updateProfile 
+        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { 
+            getFirestore, collection, addDoc, onSnapshot, 
+            query, orderBy, deleteDoc, doc, setDoc, updateDoc 
+        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'uoo-sb-classifieds-app';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDNu2etdpEuJMoZUzbq0iGIEbbhkUoxFNE",
+            authDomain: "uoo-sb.firebaseapp.com",
+            projectId: "uoo-sb",
+            storageBucket: "uoo-sb.firebasestorage.app",
+            messagingSenderId: "418905420496",
+            appId: "1:418905420496:web:6c1037dad9ed67b7ec24d5",
+            measurementId: "G-TYLQKZG0V5"
+        };
+
+        // ============================================
+        // ⚠️ CLOUDINARY UNSIGNED CONFIG - SIRF 2 VALUES ⚠️
+        // ============================================
+        // Cloudinary Dashboard → Account Details se CLOUD NAME copy karein
+        const CLOUDINARY_CLOUD_NAME = "rkmm5vma";  // ← AGAR YE ERROR DE TO ASLI NAAM DAALEIN
+        const CLOUDINARY_UPLOAD_PRESET = "uoo-sb"; // ← Preset name (Unsigned mode me hona chahiye)
+        
+        const MAX_IMAGES = 5;
+        const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+        let db, auth;
+        let currentUser = null;
+        let currentProfile = null;
+        let allAds = [];
+        let wishlist = JSON.parse(localStorage.getItem('uoosb_wishlist') || '[]');
+        let chatMessages = JSON.parse(localStorage.getItem('uoosb_chats') || '[]');
+        let chatConversations = [];
+        let activeChatId = null;
+        let unsubscribeChats = null;
+        let unsubscribeActiveChat = null;
+        let currentCategory = 'All';
+        let authMode = 'login';
+        let currentView = 'home';
+        let profileTab = 'ads';
+        let newProfilePhotoFile = null;
+        let selectedImages = [];
+        let unsubscribeAds = null;
+        let unsubscribeProfile = null;
+        let presenceTimer = null;
+        let activeChatPartnerId = null;
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const app = initializeApp(firebaseConfig);
+                try { getAnalytics(app); } catch(e) {}
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                onAuthStateChanged(auth, async (user) => {
+                    currentUser = user;
+                    updateAuthHeaderUI();
+
+                    if (unsubscribeChats) { unsubscribeChats(); unsubscribeChats = null; }
+                    if (unsubscribeActiveChat) { unsubscribeActiveChat(); unsubscribeActiveChat = null; }
+                    chatConversations = [];
+                    activeChatId = null;
+
+                    if (user && !user.isAnonymous) {
+                        loadUserProfile(user.uid);
+                        initChatRealtime();
+                    } else {
+                        currentProfile = null;
+                        renderChatMessages();
+                    }
+                });
+
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                initRealtimeListener();
+            } catch (err) {
+                console.error("Firebase init error:", err);
+                loadLocalStorageFallback();
+            }
+            updateChatBadge();
+            toggleCategoryFields();
+            if (localStorage.getItem('uoosb_dark') === '1') document.documentElement.classList.add('dark');
+            updateBottomNav();
+        });
+
+        // ============================================
+        // 🔐 CLOUDINARY UNSIGNED UPLOAD WITH PROGRESS
+        // ============================================
+        function uploadToCloudinaryWithProgress(file, onProgress) {
+            return new Promise((resolve, reject) => {
+                if (!CLOUDINARY_CLOUD_NAME) {
+                    return reject(new Error("Cloudinary cloud name missing"));
+                }
+                if (!CLOUDINARY_UPLOAD_PRESET) {
+                    return reject(new Error("Cloudinary preset missing"));
+                }
+
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+                // Unsigned upload - no API key/secret needed
+
+                const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
+
+                const xhr = new XMLHttpRequest();
+
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable) {
+                        const percent = Math.round((e.loaded / e.total) * 100);
+                        onProgress(percent);
+                    }
+                });
+
+                xhr.addEventListener('load', () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        try {
+                            const data = JSON.parse(xhr.responseText);
+                            if (data.secure_url) {
+                                onProgress(100);
+                                resolve(data.secure_url);
+                            } else {
+                                reject(new Error("No URL returned from Cloudinary"));
+                            }
+                        } catch(e) {
+                            reject(new Error("Invalid response from Cloudinary"));
+                        }
+                    } else {
+                        let errMsg = "Upload failed";
+                        try {
+                            const errData = JSON.parse(xhr.responseText);
+                            errMsg = errData?.error?.message || errMsg;
+                            
+                            // Detailed error mapping
+                            const lowerMsg = errMsg.toLowerCase();
+                            if (lowerMsg.includes('cloud_name') || lowerMsg.includes('cloud name')) {
+                                errMsg = "❌ Cloud Name galat hai. Cloudinary Dashboard se ASLI cloud name copy karein.";
+                            } else if (lowerMsg.includes('preset') && lowerMsg.includes('not found')) {
+                                errMsg = "❌ Preset 'uoo-sb' nahi mila. Cloudinary me create karein (Unsigned mode).";
+                            } else if (lowerMsg.includes('unsigned')) {
+                                errMsg = "❌ Preset 'uoo-sb' ko Unsigned mode me set karein Cloudinary me.";
+                            } else if (lowerMsg.includes('allow') && lowerMsg.includes('unsigned')) {
+                                errMsg = "❌ Cloudinary → Settings → Security → 'Allow unsigned uploads' ON karein.";
+                            }
+                        } catch(e) {}
+                        reject(new Error(errMsg));
+                    }
+                });
+
+                xhr.addEventListener('error', () => reject(new Error("Network error - internet check karein")));
+                xhr.addEventListener('timeout', () => reject(new Error("Upload timeout - internet slow hai")));
+                xhr.addEventListener('abort', () => reject(new Error("Upload cancelled")));
+
+                xhr.open('POST', url, true);
+                xhr.timeout = 60000;
+                xhr.send(formData);
+            });
+        }
+
+        // ==================== IMAGE HANDLING ====================
+        window.handleImageSelect = function(event) {
+            const files = Array.from(event.target.files || []);
+            if (files.length === 0) return;
+
+            const remaining = MAX_IMAGES - selectedImages.length;
+            if (remaining <= 0) {
+                showCustomAlert("Max 5 Images", "Aap already 5 images add kar chuke hain.", "error");
+                event.target.value = '';
+                return;
+            }
+
+            const toAdd = files.slice(0, remaining);
+            if (files.length > remaining) {
+                showCustomAlert("Extra Skipped", `Sirf ${remaining} images add ho sakti thi (max 5).`, "error");
+            }
+
+            toAdd.forEach(file => {
+                if (file.size > MAX_FILE_SIZE) {
+                    showCustomAlert("File Too Large", `"${file.name}" 5MB se bari hai.`, "error");
+                    return;
+                }
+                if (!file.type.startsWith('image/')) {
+                    showCustomAlert("Invalid File", `"${file.name}" image nahi hai.`, "error");
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    selectedImages.push({ 
+                        file, 
+                        dataUrl: e.target.result, 
+                        status: 'pending', 
+                        progress: 0,
+                        error: null
+                    });
+                    renderMultiPreview();
+                };
+                reader.readAsDataURL(file);
+            });
+
+            event.target.value = '';
+        };
+
+        function renderMultiPreview() {
+            const container = document.getElementById('multiPreviewContainer');
+            const counter = document.getElementById('imageCounter');
+            const uploadLabel = document.getElementById('uploadLabel');
+
+            if (counter) counter.innerText = `${selectedImages.length} / ${MAX_IMAGES}`;
+
+            if (selectedImages.length === 0) {
+                container.classList.add('hidden');
+                container.innerHTML = '';
+                if (uploadLabel) uploadLabel.classList.remove('hidden');
+                return;
+            }
+
+            container.classList.remove('hidden');
+            if (selectedImages.length >= MAX_IMAGES && uploadLabel) {
+                uploadLabel.classList.add('hidden');
+            } else if (uploadLabel) {
+                uploadLabel.classList.remove('hidden');
+            }
+
+            container.innerHTML = selectedImages.map((img, idx) => `
+                <div class="relative aspect-square rounded-xl overflow-hidden border-2 border-slate-200 dark:border-slate-700 group fade-in">
+                    <img src="${img.dataUrl}" class="w-full h-full object-cover">
+                    ${idx === 0 ? `<span class="absolute top-1 left-1 bg-brand-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">COVER</span>` : ''}
+                    <button type="button" onclick="removeSelectedImage(${idx})" class="absolute top-1 right-1 w-6 h-6 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center justify-center shadow text-xs transition">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                    ${img.status === 'done' ? `
+                        <div class="absolute inset-0 bg-green-600/30 flex items-center justify-center">
+                            <div class="bg-green-600 text-white rounded-full w-8 h-8 flex items-center justify-center">
+                                <i class="fa-solid fa-check"></i>
+                            </div>
+                        </div>
+                    ` : ''}
+                    ${img.status === 'error' ? `
+                        <div class="absolute inset-0 bg-red-600/50 flex items-center justify-center">
+                            <div class="bg-red-600 text-white rounded-full w-8 h-8 flex items-center justify-center">
+                                <i class="fa-solid fa-xmark"></i>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        window.removeSelectedImage = function(idx) {
+            selectedImages.splice(idx, 1);
+            renderMultiPreview();
+        };
+
+        // ==================== UPLOAD PROGRESS UI ====================
+        function showUploadProgress() {
+            document.getElementById('uploadProgressPanel').classList.remove('hidden');
+        }
+
+        function hideUploadProgress() {
+            document.getElementById('uploadProgressPanel').classList.add('hidden');
+        }
+
+        function updateUploadUI(currentIdx, totalImages, currentPercent, fileName) {
+            const overallPercent = Math.round(((currentIdx + (currentPercent / 100)) / totalImages) * 100);
+            
+            document.getElementById('uploadPercentText').innerText = `${overallPercent}%`;
+            document.getElementById('uploadProgressBar').style.width = `${overallPercent}%`;
+            document.getElementById('uploadStatusText').innerText = `Uploading image ${currentIdx + 1} of ${totalImages}`;
+            document.getElementById('uploadFileText').innerText = fileName || 'Preparing...';
+
+            const list = document.getElementById('uploadImageList');
+            list.innerHTML = selectedImages.map((img, i) => {
+                let statusIcon = '';
+                let statusText = '';
+                let percent = img.progress || 0;
+                let barColor = 'bg-brand-600';
+
+                if (i < currentIdx) {
+                    statusIcon = '<i class="fa-solid fa-circle-check text-green-500"></i>';
+                    statusText = 'Done';
+                    percent = 100;
+                } else if (i === currentIdx) {
+                    statusIcon = '<i class="fa-solid fa-spinner spin text-brand-600"></i>';
+                    statusText = `${currentPercent}%`;
+                    percent = currentPercent;
+                } else {
+                    statusIcon = '<i class="fa-solid fa-clock text-slate-400"></i>';
+                    statusText = 'Waiting';
+                    percent = 0;
+                    barColor = 'bg-slate-400';
+                }
+
+                return `
+                    <div class="flex items-center gap-2 text-xs">
+                        <div class="w-5 flex justify-center">${statusIcon}</div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between mb-0.5">
+                                <span class="text-slate-700 dark:text-slate-200 font-bold truncate">Image ${i + 1}</span>
+                                <span class="text-slate-500 dark:text-slate-400 text-[10px]">${statusText}</span>
+                            </div>
+                            <div class="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                <div class="${barColor} h-full rounded-full transition-all duration-200" style="width: ${percent}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ==================== PROFILE ====================
+        async function loadUserProfile(uid) {
+            if (!db) return;
+            try {
+                if (unsubscribeProfile) unsubscribeProfile();
+                const profileRef = doc(db, 'artifacts', appId, 'public', 'data', 'uoo_sb_profiles', uid);
+                unsubscribeProfile = onSnapshot(profileRef, (snap) => {
+                    if (snap.exists()) {
+                        currentProfile = snap.data();
+                    } else {
+                        currentProfile = {
+                            uid,
+                            name: currentUser.displayName || currentUser.email.split('@')[0],
+                            phone: '', city: '', bio: '', photo: '',
+                            email: currentUser.email,
+                            createdAt: Date.now()
+                        };
+                    }
+                    updateAuthHeaderUI();
+                    if (currentView === 'profile') renderProfileView();
+                });
+            } catch(e) { console.error("Profile load error:", e); }
+        }
+
+        window.openProfileOrLogin = function() {
+            if (!currentUser || currentUser.isAnonymous) {
+                openAuthModal('login');
+                return;
+            }
+            showProfileView();
+        };
+
+        window.showProfileView = function() {
+            currentView = 'profile';
+            document.getElementById('homeView').classList.add('hidden');
+            document.getElementById('profileView').classList.remove('hidden');
+            renderProfileView();
+            updateBottomNav();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        window.showHomeView = function() {
+            currentView = 'home';
+            document.getElementById('profileView').classList.add('hidden');
+            document.getElementById('homeView').classList.remove('hidden');
+            updateBottomNav();
+        };
+
+        window.switchProfileTab = function(tab) {
+            profileTab = tab;
+            renderProfileView();
+        };
+
+        function renderProfileView() {
+            const container = document.getElementById('profileView');
+            if (!currentUser || currentUser.isAnonymous) {
+                container.innerHTML = `<div class="text-center py-20"><p class="text-slate-400">Please login to view profile.</p></div>`;
+                return;
+            }
+
+            const p = currentProfile || {
+                name: currentUser.displayName || currentUser.email.split('@')[0],
+                phone: '', city: '', bio: '', photo: '', email: currentUser.email
+            };
+
+            const myAds = allAds.filter(ad => ad.userId === currentUser.uid);
+            const likedAds = allAds.filter(ad => wishlist.includes(ad.id));
+            const displayedAds = profileTab === 'ads' ? myAds : likedAds;
+            const memberSince = p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-PK', { year: 'numeric', month: 'short' }) : 'New';
+
+            container.innerHTML = `
+                <div class="bg-gradient-to-br from-brand-600 via-emerald-600 to-teal-600 rounded-3xl p-5 sm:p-8 text-white mb-5 shadow-2xl relative overflow-hidden">
+                    <div class="absolute -right-8 -top-8 opacity-10 text-9xl"><i class="fa-solid fa-user"></i></div>
+                    <div class="relative z-10 flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
+                        <div class="relative">
+                            <img src="${p.photo || 'https://placehold.co/120x120/ffffff/16a34a?text=' + (p.name||'U').charAt(0).toUpperCase()}" 
+                                 class="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-4 border-white/30 shadow-xl">
+                            <div class="absolute bottom-0 right-0 bg-amber-400 text-slate-900 w-8 h-8 rounded-full flex items-center justify-center shadow-lg">
+                                <i class="fa-solid fa-check text-xs"></i>
+                            </div>
+                        </div>
+                        <div class="flex-1 text-center sm:text-left">
+                            <h1 class="text-2xl sm:text-3xl font-black mb-1">${p.name || 'UOO S&B User'}</h1>
+                            <p class="text-xs sm:text-sm text-white/80 mb-2 break-all">${p.email || currentUser.email}</p>
+                            <div class="flex flex-wrap gap-2 justify-center sm:justify-start">
+                                ${p.phone ? `<span class="bg-white/20 backdrop-blur-sm text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5"><i class="fa-solid fa-phone"></i>${p.phone}</span>` : ''}
+                                ${p.city ? `<span class="bg-white/20 backdrop-blur-sm text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5"><i class="fa-solid fa-location-dot"></i>${p.city}</span>` : ''}
+                                <span class="bg-white/20 backdrop-blur-sm text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5"><i class="fa-solid fa-calendar"></i>Since ${memberSince}</span>
+                            </div>
+                            ${p.bio ? `<p class="text-xs sm:text-sm text-white/90 mt-3 italic">"${p.bio}"</p>` : ''}
+                        </div>
+                    </div>
+                    
+                    <div class="relative z-10 mt-5 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                        <button onclick="openEditProfileModal()" class="bg-white text-brand-700 hover:bg-brand-50 px-3 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg transition">
+                            <i class="fa-solid fa-pen"></i>Edit
+                        </button>
+                        <button onclick="showHomeView(); checkAuthAndPostAd()" class="bg-amber-400 hover:bg-amber-500 text-slate-900 px-3 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg transition">
+                            <i class="fa-solid fa-plus"></i>New Ad
+                        </button>
+                        <button onclick="openChatDrawer()" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white px-3 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition">
+                            <i class="fa-solid fa-comments"></i>Chats
+                        </button>
+                        <button onclick="handleSignOutConfirm()" class="bg-red-500 hover:bg-red-600 text-white px-3 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg transition">
+                            <i class="fa-solid fa-right-from-bracket"></i>Logout
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2 sm:gap-4 mb-5">
+                    <div class="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-5 border border-slate-200 dark:border-slate-800 text-center shadow-sm">
+                        <div class="text-2xl sm:text-3xl font-black text-brand-600">${myAds.length}</div>
+                        <div class="text-[10px] sm:text-xs font-bold uppercase text-slate-400 mt-1">My Ads</div>
+                    </div>
+                    <div class="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-5 border border-slate-200 dark:border-slate-800 text-center shadow-sm">
+                        <div class="text-2xl sm:text-3xl font-black text-rose-500">${likedAds.length}</div>
+                        <div class="text-[10px] sm:text-xs font-bold uppercase text-slate-400 mt-1">Liked</div>
+                    </div>
+                    <div class="bg-white dark:bg-slate-900 rounded-2xl p-3 sm:p-5 border border-slate-200 dark:border-slate-800 text-center shadow-sm">
+                        <div class="text-2xl sm:text-3xl font-black text-amber-500">${chatMessages.length}</div>
+                        <div class="text-[10px] sm:text-xs font-bold uppercase text-slate-400 mt-1">Messages</div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-slate-900 rounded-2xl p-1.5 border border-slate-200 dark:border-slate-800 mb-4 flex shadow-sm">
+                    <button onclick="switchProfileTab('ads')" class="flex-1 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition ${profileTab === 'ads' ? 'bg-brand-600 text-white shadow-lg shadow-brand-500/30' : 'text-slate-500 dark:text-slate-400'}">
+                        <i class="fa-solid fa-list mr-1.5"></i>My Ads (${myAds.length})
+                    </button>
+                    <button onclick="switchProfileTab('liked')" class="flex-1 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition ${profileTab === 'liked' ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/30' : 'text-slate-500 dark:text-slate-400'}">
+                        <i class="fa-solid fa-heart mr-1.5"></i>Liked (${likedAds.length})
+                    </button>
+                </div>
+
+                <div id="profileAdsGrid" class="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6"></div>
+            `;
+
+            renderProfileAds(displayedAds, profileTab);
+        }
+
+        function renderProfileAds(ads, tab) {
+            const grid = document.getElementById('profileAdsGrid');
+            if (!grid) return;
+            
+            if (ads.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full text-center py-12 sm:py-16">
+                        <div class="bg-slate-100 dark:bg-slate-800 p-5 rounded-full text-slate-400 inline-block mb-4">
+                            <i class="fa-solid ${tab === 'ads' ? 'fa-bullhorn' : 'fa-heart'} text-4xl"></i>
+                        </div>
+                        <h3 class="font-bold text-lg">${tab === 'ads' ? 'Abhi tak koi ad nahi' : 'Koi liked ad nahi'}</h3>
+                        <p class="text-sm text-slate-500 mt-1 mb-4">${tab === 'ads' ? 'Apna pehla ad post karein!' : 'Ads ko like karein.'}</p>
+                        ${tab === 'ads' ? '<button onclick="showHomeView(); checkAuthAndPostAd()" class="bg-brand-600 hover:bg-brand-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm">Post Ad</button>' : '<button onclick="showHomeView()" class="bg-brand-600 hover:bg-brand-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm">Browse Ads</button>'}
+                    </div>`;
+                return;
+            }
+
+            grid.innerHTML = ads.map(ad => {
+                const isOwner = ad.userId === currentUser.uid;
+                const coverImg = (ad.images && ad.images[0]) || ad.image || 'https://placehold.co/600x400/334155/ffffff?text=UOO+SB';
+                return `
+                    <div class="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl transition flex flex-col cursor-pointer" onclick="viewAdDetail('${ad.id}')">
+                        <div class="relative h-40 sm:h-48 overflow-hidden bg-slate-100 dark:bg-slate-800">
+                            <img src="${coverImg}" class="w-full h-full object-cover" onerror="this.src='https://placehold.co/600x400/334155/ffffff?text=UOO+SB'">
+                            <span class="absolute top-2 left-2 bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase">${ad.condition || 'Used'}</span>
+                            <button onclick="toggleWishlist('${ad.id}', event)" class="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 dark:bg-slate-900/90 flex items-center justify-center text-rose-500 shadow">
+                                <i class="${wishlist.includes(ad.id) ? 'fa-solid' : 'fa-regular'} fa-heart text-sm"></i>
+                            </button>
+                            ${isOwner ? `<span class="absolute bottom-2 right-2 bg-brand-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-lg">YOUR AD</span>` : ''}
+                        </div>
+                        <div class="p-3 sm:p-4 flex-1 flex flex-col justify-between">
+                            <div>
+                                <div class="text-base sm:text-xl font-black text-brand-600 dark:text-brand-400 mb-0.5">PKR ${Number(ad.price).toLocaleString()}</div>
+                                <h3 class="font-bold text-sm sm:text-base text-slate-800 dark:text-slate-100 line-clamp-1 mb-1">${ad.title}</h3>
+                                <p class="text-[11px] sm:text-xs text-slate-400 line-clamp-2 mb-2">${ad.description}</p>
+                            </div>
+                            <div class="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[10px] text-slate-400">
+                                <span class="flex items-center"><i class="fa-solid fa-location-dot mr-1 text-brand-500"></i>${ad.location || 'Pakistan'}</span>
+                                <div class="flex items-center gap-1">
+                                    <button onclick="event.stopPropagation(); startChatWithSeller('${ad.title.replace(/'/g, "\\'")}', '${ad.id}')" class="w-7 h-7 rounded-lg bg-brand-600 text-white flex items-center justify-center">
+                                        <i class="fa-solid fa-comment text-[10px]"></i>
+                                    </button>
+                                    ${isOwner ? `<button onclick="event.stopPropagation(); deleteAdConfirm('${ad.id}')" class="w-7 h-7 rounded-lg bg-red-500 text-white flex items-center justify-center">
+                                        <i class="fa-solid fa-trash text-[10px]"></i>
+                                    </button>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ==================== EDIT PROFILE ====================
+        window.openEditProfileModal = function() {
+            const p = currentProfile || {};
+            document.getElementById('editProfileName').value = p.name || currentUser.displayName || '';
+            document.getElementById('editProfilePhone').value = p.phone || '';
+            document.getElementById('editProfileCity').value = p.city || 'Lahore';
+            document.getElementById('editProfileBio').value = p.bio || '';
+            document.getElementById('editProfileAvatar').src = p.photo || 'https://placehold.co/120x120/16a34a/ffffff?text=' + (p.name||'U').charAt(0).toUpperCase();
+            newProfilePhotoFile = null;
+            document.getElementById('profileUploadProgress').classList.add('hidden');
+            document.getElementById('editProfileModal').classList.remove('hidden');
+        };
+
+        window.closeEditProfileModal = function() {
+            document.getElementById('editProfileModal').classList.add('hidden');
+            newProfilePhotoFile = null;
+        };
+
+        window.previewProfilePhoto = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            if (file.size > 3 * 1024 * 1024) {
+                showCustomAlert("File too large", "Profile photo 3MB se choti honi chahiye.", "error");
+                return;
+            }
+            newProfilePhotoFile = file;
+            const reader = new FileReader();
+            reader.onload = (e) => { document.getElementById('editProfileAvatar').src = e.target.result; };
+            reader.readAsDataURL(file);
+        };
+
+        window.handleUpdateProfile = async function(event) {
+            event.preventDefault();
+            const btn = document.getElementById('saveProfileBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner spin"></i> Saving...';
+
+            const name = document.getElementById('editProfileName').value.trim();
+            const phone = document.getElementById('editProfilePhone').value.trim();
+            const city = document.getElementById('editProfileCity').value;
+            const bio = document.getElementById('editProfileBio').value.trim();
+
+            try {
+                let photoUrl = currentProfile?.photo || '';
+                if (newProfilePhotoFile) {
+                    try {
+                        document.getElementById('profileUploadProgress').classList.remove('hidden');
+                        photoUrl = await uploadToCloudinaryWithProgress(newProfilePhotoFile, (percent) => {
+                            document.getElementById('profileUploadPercent').innerText = `${percent}%`;
+                            document.getElementById('profileUploadBar').style.width = `${percent}%`;
+                        });
+                    } catch(e) {
+                        showCustomAlert("Photo Upload Failed", e.message, "error");
+                        btn.disabled = false;
+                        btn.innerHTML = 'Save';
+                        document.getElementById('profileUploadProgress').classList.add('hidden');
+                        return;
+                    }
+                }
+
+                const profileData = {
+                    uid: currentUser.uid, name, phone, city, bio,
+                    photo: photoUrl, email: currentUser.email,
+                    createdAt: currentProfile?.createdAt || Date.now(),
+                    updatedAt: Date.now()
+                };
+
+                if (db) {
+                    const ref = doc(db, 'artifacts', appId, 'public', 'data', 'uoo_sb_profiles', currentUser.uid);
+                    await setDoc(ref, profileData, { merge: true });
+                }
+                try { await updateProfile(currentUser, { displayName: name }); } catch(e) {}
+
+                currentProfile = profileData;
+                closeEditProfileModal();
+                showCustomAlert("Profile Updated! ✅", "Aapki profile save ho gayi.", "success");
+                renderProfileView();
+            } catch(e) {
+                console.error("Profile save error:", e);
+                let errMsg = e.message || "Profile save nahi ho saki.";
+                if (errMsg.includes('permission') || errMsg.includes('PERMISSION')) {
+                    errMsg = "Firestore permissions issue. Firebase rules update karein.";
+                }
+                showCustomAlert("Error", errMsg, "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'Save';
+            }
+        };
+
+        // ==================== AUTH HEADER ====================
+        window.updateAuthHeaderUI = function() {
+            const container = document.getElementById('authHeaderContainer');
+            if (!container) return;
+
+            if (currentUser && !currentUser.isAnonymous) {
+                const p = currentProfile || {};
+                const displayName = p.name || currentUser.displayName || (currentUser.email ? currentUser.email.split('@')[0] : 'User');
+                const initial = displayName.charAt(0).toUpperCase();
+                const avatar = p.photo || `https://placehold.co/80x80/16a34a/ffffff?text=${initial}`;
+
+                container.innerHTML = `
+                    <button onclick="openProfileOrLogin()" class="flex items-center space-x-2 bg-slate-100 dark:bg-slate-800 pl-1 pr-2 sm:pr-3 py-1 rounded-2xl border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+                        <img src="${avatar}" class="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover">
+                        <span class="text-xs font-bold max-w-[60px] sm:max-w-[100px] truncate hidden xs:inline">${displayName}</span>
+                        <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 hidden sm:inline"></i>
+                    </button>
+                `;
+            } else {
+                container.innerHTML = `
+                    <button onclick="openAuthModal('login')" class="px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition">Login</button>
+                    <button onclick="openAuthModal('signup')" class="hidden sm:inline-flex bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow transition">Register</button>
+                `;
+            }
+        };
+
+        // ==================== AUTH ====================
+        window.openAuthModal = function(mode = 'login') {
+            authMode = mode;
+            const titleEl = document.getElementById('authModalTitle');
+            const subEl = document.getElementById('authModalSub');
+            const nameContainer = document.getElementById('nameFieldContainer');
+            const phoneContainer = document.getElementById('phoneFieldContainer');
+            const submitBtn = document.getElementById('authSubmitBtn');
+            const toggleText = document.getElementById('authToggleText');
+            const toggleBtn = document.getElementById('authToggleBtn');
+
+            if (authMode === 'login') {
+                titleEl.innerText = 'Welcome Back';
+                subEl.innerText = 'Sign in to your account';
+                nameContainer.classList.add('hidden');
+                phoneContainer.classList.add('hidden');
+                document.getElementById('authName').required = false;
+                document.getElementById('authPhone').required = false;
+                submitBtn.innerText = 'Sign In';
+                toggleText.innerText = "Don't have an account?";
+                toggleBtn.innerText = 'Create Account';
+            } else {
+                titleEl.innerText = 'Create Account';
+                subEl.innerText = 'Join UOO S&B community';
+                nameContainer.classList.remove('hidden');
+                phoneContainer.classList.remove('hidden');
+                document.getElementById('authName').required = true;
+                document.getElementById('authPhone').required = true;
+                submitBtn.innerText = 'Register Account';
+                toggleText.innerText = 'Already have an account?';
+                toggleBtn.innerText = 'Login';
+            }
+            document.getElementById('authModal').classList.remove('hidden');
+        };
+
+        window.closeAuthModal = function() {
+            document.getElementById('authModal').classList.add('hidden');
+            document.getElementById('authForm').reset();
+        };
+
+        window.toggleAuthMode = function() {
+            openAuthModal(authMode === 'login' ? 'signup' : 'login');
+        };
+
+        window.handleAuthSubmit = async function(event) {
+            event.preventDefault();
+            const email = document.getElementById('authEmail').value.trim();
+            const password = document.getElementById('authPassword').value;
+            const name = document.getElementById('authName').value.trim();
+            const phone = document.getElementById('authPhone').value.trim();
+            const submitBtn = document.getElementById('authSubmitBtn');
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<i class="fa-solid fa-spinner spin mr-2"></i>Processing...`;
+
+            try {
+                if (!auth) throw new Error("Auth service unavailable");
+                
+                if (authMode === 'signup') {
+                    const userCred = await createUserWithEmailAndPassword(auth, email, password);
+                    const user = userCred.user;
+                    if (name) { try { await updateProfile(user, { displayName: name }); } catch(e) {} }
+
+                    if (db) {
+                        try {
+                            const ref = doc(db, 'artifacts', appId, 'public', 'data', 'uoo_sb_profiles', user.uid);
+                            await setDoc(ref, {
+                                uid: user.uid, name, phone, email,
+                                city: '', bio: '', photo: '',
+                                createdAt: Date.now()
+                            });
+                        } catch(profileErr) {
+                            console.warn("Profile creation failed (rules?), but user created:", profileErr.message);
+                        }
+                    }
+                    currentUser = user;
+                    showCustomAlert("Account Created! 🎉", `Welcome ${name}!`, "success");
+                } else {
+                    const userCred = await signInWithEmailAndPassword(auth, email, password);
+                    currentUser = userCred.user;
+                    showCustomAlert("Logged In! ✅", "Welcome back!", "success");
+                }
+                closeAuthModal();
+                updateAuthHeaderUI();
+                if (currentView === 'profile') renderProfileView();
+            } catch (err) {
+                console.error("Auth error:", err);
+                let msg = err.message || "Failed";
+                if (err.code === 'auth/email-already-in-use') msg = "Ye email pehle se registered hai.";
+                else if (err.code === 'auth/invalid-email') msg = "Email sahi nahi hai.";
+                else if (err.code === 'auth/weak-password') msg = "Password min 6 chars chahiye.";
+                else if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') msg = "Email ya password ghalat.";
+                else if (err.code === 'auth/user-not-found') msg = "Account exist nahi karta.";
+                else if (err.code === 'auth/operation-not-allowed') msg = "Email/Password enable karein Firebase me.";
+                showCustomAlert("Error", msg, "error");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = authMode === 'signup' ? 'Register Account' : 'Sign In';
+            }
+        };
+
+        window.handleSignOut = async function() {
+            try {
+                if (auth) await signOut(auth);
+                try { await signInAnonymously(auth); } catch(e) {}
+                currentUser = null;
+                currentProfile = null;
+                if (unsubscribeProfile) { unsubscribeProfile(); unsubscribeProfile = null; }
+                updateAuthHeaderUI();
+                showHomeView();
+                showCustomAlert("Signed Out 👋", "Aap logout ho gaye.", "success");
+            } catch (e) { console.error(e); }
+        };
+
+        window.handleSignOutConfirm = function() {
+            showConfirm("Logout?", "Kya aap logout karna chahte hain?", "Logout", () => {
+                closeConfirm();
+                handleSignOut();
+            });
+        };
+
+        // ==================== ADS ====================
+        function initRealtimeListener() {
+            if (!db) return loadLocalStorageFallback();
+
+            try {
+                const adsColRef = collection(
+                    db,
+                    'artifacts',
+                    appId,
+                    'public',
+                    'data',
+                    'uoo_sb_classifieds'
+                );
+
+                // No Firestore orderBy here. Sorting is done in JavaScript.
+                // This avoids index/query problems and supports older documents.
+                unsubscribeAds = onSnapshot(
+                    adsColRef,
+                    (snapshot) => {
+                        const remoteAds = [];
+
+                        snapshot.forEach((docSnap) => {
+                            const data = docSnap.data() || {};
+
+                            if (data.image && !Array.isArray(data.images)) {
+                                data.images = [data.image];
+                            }
+
+                            if (!Array.isArray(data.images)) {
+                                data.images = [];
+                            }
+
+                            remoteAds.push({
+                                id: docSnap.id,
+                                ...data
+                            });
+                        });
+
+                        allAds = remoteAds;
+                        sortAndRenderAds();
+
+                        if (currentView === 'profile') {
+                            renderProfileView();
+                        }
+                    },
+                    (error) => {
+                        console.error("Firestore realtime listener error:", error);
+
+                        // Do not erase the current UI when realtime sync fails.
+                        loadLocalStorageFallback();
+
+                        showCustomAlert(
+                            "Live Sync Issue",
+                            "Realtime sync issue hai. Saved post local backup se show kiya ja raha hai.",
+                            "error"
+                        );
+                    }
+                );
+            } catch (e) {
+                console.error("Listener setup error:", e);
+                loadLocalStorageFallback();
+            }
+        }
+
+        async function seedSampleAds() {
+            localStorage.setItem('uoosb_seeded', 'true');
+            const samples = [
+                { title: 'Honda Civic Oriel 1.5 VTEC Turbo 2023', price: 8650000, category: 'Vehicles', location: 'Lahore', condition: 'Good Condition', spec1: '2023', spec2: '18,000 km', phone: '03211234567', description: 'Bumper to bumper original, first owner, ceramic coated, sunroof, leather seats.', images: ['https://placehold.co/600x400/0284c7/ffffff?text=Honda+Civic+2023'], timestamp: Date.now() - 200000, userId: 'system', userEmail: 'system@uoosb.com' },
+                { title: 'Luxury 10 Marla Brand New House Bahria Town', price: 34500000, category: 'Property', location: 'Islamabad', condition: 'Brand New', spec1: '10 Marla (5 Beds)', spec2: 'Double Unit', phone: '03009876543', description: '5 master bedrooms, imported fittings, spacious TV lounge.', images: ['https://placehold.co/600x400/16a34a/ffffff?text=Luxury+House'], timestamp: Date.now() - 100000, userId: 'system', userEmail: 'system@uoosb.com' },
+                { title: 'iPhone 15 Pro Max 256GB PTA Approved', price: 385000, category: 'Mobiles', location: 'Karachi', condition: 'Like New', spec1: '256GB / 8GB RAM', spec2: 'PTA Approved', phone: '03331234567', description: 'Complete box, original charger, 100% battery health.', images: ['https://placehold.co/600x400/7c3aed/ffffff?text=iPhone+15+Pro+Max'], timestamp: Date.now(), userId: 'system', userEmail: 'system@uoosb.com' }
+            ];
+            if (!db) return;
+            for (const ad of samples) {
+                try { await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'uoo_sb_classifieds'), ad); }
+                catch(e) { console.warn("Seed failed:", e.message); }
+            }
+        }
+
+        function loadLocalStorageFallback() {
+            const stored = localStorage.getItem('uoosb_classifieds_ads');
+
+            if (stored) {
+                try {
+                    const parsed = JSON.parse(stored);
+                    allAds = Array.isArray(parsed) ? parsed : [];
+                } catch (e) {
+                    console.warn("Local ads parse failed:", e);
+                    allAds = [];
+                }
+            }
+
+            allAds = allAds.map(ad => ({
+                ...ad,
+                images: Array.isArray(ad.images)
+                    ? ad.images
+                    : (ad.image ? [ad.image] : [])
+            }));
+
+            sortAndRenderAds();
+        }
+
+        window.toggleCategoryFields = function() {
+            const cat = document.getElementById('adCategory').value;
+            const map = {
+                'Vehicles': ['Model Year', 'e.g. 2023', 'Mileage (km)', 'e.g. 25,000 km'],
+                'Bikes':    ['Model Year', 'e.g. 2022', 'Mileage (km)', 'e.g. 12,000 km'],
+                'Property': ['Property Size', 'e.g. 10 Marla', 'Bedrooms / Type', 'e.g. 5 Beds'],
+                'Mobiles':  ['Storage / RAM', 'e.g. 256GB / 8GB', 'PTA Status', 'e.g. PTA Approved'],
+                'Electronics': ['Brand / Model', 'e.g. Dell XPS 15', 'Warranty', 'e.g. 6 months'],
+                'Jobs':     ['Job Type', 'e.g. Full-time', 'Experience', 'e.g. 2 years']
+            };
+            const v = map[cat] || ['Spec 1', 'e.g. Brand', 'Spec 2', 'e.g. Details'];
+            document.getElementById('specLabel1').innerText = v[0];
+            document.getElementById('adSpec1').placeholder = v[1];
+            document.getElementById('specLabel2').innerText = v[2];
+            document.getElementById('adSpec2').placeholder = v[3];
+        };
+
+        window.checkAuthAndPostAd = function() {
+            if (!currentUser || currentUser.isAnonymous) {
+                showCustomAlert("Login Required 🔒", "Ad post karne ke liye login/register karein.", "error");
+                openAuthModal('login');
+                return;
+            }
+            if (currentProfile?.phone) document.getElementById('adPhone').value = currentProfile.phone;
+            if (currentProfile?.city) document.getElementById('adLocation').value = currentProfile.city;
+            selectedImages = [];
+            renderMultiPreview();
+            hideUploadProgress();
+            openModal();
+        };
+
+        window.handlePostAd = async function(event) {
+            event.preventDefault();
+            const submitBtn = document.getElementById('submitBtn');
+            const submitBtnText = document.getElementById('submitBtnText');
+            
+            if (selectedImages.length === 0) {
+                showCustomAlert("Photo Required 📷", "Kam se kam 1 photo add karein.", "error");
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtnText.innerHTML = '<i class="fa-solid fa-spinner spin mr-2"></i>Uploading...';
+
+            const title = document.getElementById('adTitle').value.trim();
+            const price = parseFloat(document.getElementById('adPrice').value);
+            const category = document.getElementById('adCategory').value;
+            const location = document.getElementById('adLocation').value;
+            const condition = document.getElementById('adCondition').value;
+            const spec1 = document.getElementById('adSpec1').value.trim();
+            const spec2 = document.getElementById('adSpec2').value.trim();
+            const phone = document.getElementById('adPhone').value.trim();
+            const description = document.getElementById('adDescription').value.trim();
+
+            const startTime = Date.now();
+
+            try {
+                showUploadProgress();
+                
+                selectedImages.forEach(img => {
+                    img.status = 'pending';
+                    img.progress = 0;
+                });
+
+                const uploadedUrls = [];
+
+                for (let i = 0; i < selectedImages.length; i++) {
+                    const img = selectedImages[i];
+                    img.status = 'uploading';
+
+                    try {
+                        const url = await uploadToCloudinaryWithProgress(img.file, (percent) => {
+                            img.progress = percent;
+                            updateUploadUI(i, selectedImages.length, percent, img.file.name);
+
+                            const elapsed = (Date.now() - startTime) / 1000;
+                            const overallPercent = ((i + percent / 100) / selectedImages.length) * 100;
+                            if (overallPercent > 5) {
+                                const totalEstimated = elapsed / (overallPercent / 100);
+                                const remaining = Math.max(0, Math.round(totalEstimated - elapsed));
+                                document.getElementById('uploadTimeText').innerText = remaining > 0 ? `~${remaining}s left` : 'almost done';
+                            }
+                        });
+                        
+                        uploadedUrls.push(url);
+                        img.status = 'done';
+                        img.progress = 100;
+                        renderMultiPreview();
+                        updateUploadUI(i + 1, selectedImages.length, 0, '');
+                    } catch (err) {
+                        img.status = 'error';
+                        img.error = err.message;
+                        throw new Error(`Image ${i + 1}: ${err.message}`);
+                    }
+                }
+
+                if (uploadedUrls.length === 0) throw new Error("Koi image upload nahi ho saki.");
+
+                document.getElementById('uploadStatusText').innerText = 'Saving ad...';
+                document.getElementById('uploadPercentText').innerText = '100%';
+                document.getElementById('uploadProgressBar').style.width = '100%';
+                document.getElementById('uploadTimeText').innerText = 'Done!';
+
+                const newAd = {
+                    title, price, category, location, condition,
+                    spec1, spec2, phone, description,
+                    image: uploadedUrls[0],
+                    images: uploadedUrls,
+                    timestamp: Date.now(),
+                    userId: currentUser.uid,
+                    userEmail: currentUser.email || 'Anonymous',
+                    userName: currentProfile?.name || currentUser.displayName || '',
+                    userPhoto: currentProfile?.photo || '',
+                    userPhone: currentProfile?.phone || phone
+                };
+
+                if (db) {
+                    // Save to Firestore first.
+                    const adsCollection = collection(
+                        db,
+                        'artifacts',
+                        appId,
+                        'public',
+                        'data',
+                        'uoo_sb_classifieds'
+                    );
+
+                    const savedRef = await addDoc(adsCollection, newAd);
+
+                    // IMPORTANT: immediately show the newly saved post.
+                    const savedAd = {
+                        id: savedRef.id,
+                        ...newAd
+                    };
+
+                    allAds = [
+                        savedAd,
+                        ...allAds.filter(ad => ad.id !== savedRef.id)
+                    ];
+
+                    // Local backup for temporary realtime/listener failures.
+                    localStorage.setItem(
+                        'uoosb_classifieds_ads',
+                        JSON.stringify(allAds)
+                    );
+
+                    sortAndRenderAds();
+                } else {
+                    const localAd = {
+                        id: 'local-' + Date.now(),
+                        ...newAd
+                    };
+
+                    allAds = [localAd, ...allAds];
+
+                    localStorage.setItem(
+                        'uoosb_classifieds_ads',
+                        JSON.stringify(allAds)
+                    );
+
+                    sortAndRenderAds();
+                }
+
+                await new Promise(r => setTimeout(r, 150));
+
+                closeModal();
+                document.getElementById('adForm').reset();
+                selectedImages = [];
+                renderMultiPreview();
+                hideUploadProgress();
+                showCustomAlert("Ad Posted! 🎉", `Aapka ad ${uploadedUrls.length} photos ke saath live ho gaya.`, "success");
+            } catch (err) {
+                console.error("Post ad error:", err);
+                document.getElementById('uploadStatusText').innerText = 'Upload failed ❌';
+                showCustomAlert("Upload Error ❌", err.message || "Ad publish nahi ho saka.", "error");
+            } finally {
+                submitBtn.disabled = false;
+                submitBtnText.innerText = 'Post Ad Now';
+            }
+        };
+
+        window.sortAndRenderAds = function() {
+            const sortSelect = document.getElementById('sortBy');
+            const sortBy = sortSelect ? sortSelect.value : 'newest';
+
+            if (sortBy === 'newest') {
+                allAds.sort((a, b) =>
+                    Number(b.timestamp || 0) - Number(a.timestamp || 0)
+                );
+            } else if (sortBy === 'price-low') {
+                allAds.sort((a, b) =>
+                    Number(a.price || 0) - Number(b.price || 0)
+                );
+            } else if (sortBy === 'price-high') {
+                allAds.sort((a, b) =>
+                    Number(b.price || 0) - Number(a.price || 0)
+                );
+            }
+
+            renderAds();
+        };
+
+        function getCoverImage(ad) {
+            if (ad.images && ad.images.length > 0) return ad.images[0];
+            if (ad.image) return ad.image;
+            return 'https://placehold.co/600x400/334155/ffffff?text=UOO+SB';
+        }
+
+        window.renderAds = function() {
+            const grid = document.getElementById('adsGrid');
+            const emptyState = document.getElementById('emptyState');
+            if (!grid) return;
+
+            const searchVal = (document.getElementById('searchInput').value || document.getElementById('mobileSearchInput').value || '').toLowerCase();
+            const selectedLocation = document.getElementById('headerLocation').value;
+            const mobileLocation = document.getElementById('mobileLocation').value;
+            const activeLoc = selectedLocation !== 'All' ? selectedLocation : (mobileLocation !== 'All' ? mobileLocation : 'All');
+
+            const filtered = allAds.filter(ad => {
+                const matchesCat = currentCategory === 'All' || ad.category === currentCategory;
+                const matchesLoc = activeLoc === 'All' || ad.location === activeLoc;
+                const matchesSearch = (ad.title || '').toLowerCase().includes(searchVal) 
+                    || (ad.description || '').toLowerCase().includes(searchVal) 
+                    || (ad.location || '').toLowerCase().includes(searchVal);
+                return matchesCat && matchesLoc && matchesSearch;
+            });
+
+            document.getElementById('resultCountTitle').innerText = `${filtered.length} Ads Found`;
+
+            if (filtered.length === 0) {
+                grid.innerHTML = '';
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            emptyState.classList.add('hidden');
+            grid.innerHTML = filtered.map(ad => {
+                const isFav = wishlist.includes(ad.id);
+                const isOwner = currentUser && !currentUser.isAnonymous && ad.userId === currentUser.uid;
+                const sellerName = ad.userName || (ad.userEmail ? ad.userEmail.split('@')[0] : 'Seller');
+                const sellerInitial = sellerName.charAt(0).toUpperCase();
+                const imgCount = (ad.images && ad.images.length) || 1;
+                return `
+                    <div class="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm hover:shadow-xl transition flex flex-col group cursor-pointer relative" onclick="viewAdDetail('${ad.id}')">
+                        <div class="relative h-40 sm:h-48 overflow-hidden bg-slate-100 dark:bg-slate-800">
+                            <img src="${getCoverImage(ad)}" alt="${ad.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" onerror="this.src='https://placehold.co/600x400/334155/ffffff?text=UOO+SB'">
+                            <span class="absolute top-2 left-2 bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase">${ad.condition || 'Used'}</span>
+                            ${imgCount > 1 ? `<span class="absolute top-2 right-12 bg-black/70 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded-full"><i class="fa-solid fa-images mr-1"></i>${imgCount}</span>` : ''}
+                            <button onclick="toggleWishlist('${ad.id}', event)" class="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-md flex items-center justify-center text-rose-500 shadow hover:scale-110 transition">
+                                <i class="${isFav ? 'fa-solid' : 'fa-regular'} fa-heart text-sm"></i>
+                            </button>
+                            ${isOwner ? `<span class="absolute bottom-2 right-2 bg-brand-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-lg">YOUR AD</span>` : ''}
+                        </div>
+                        <div class="p-3 sm:p-4 flex-1 flex flex-col justify-between">
+                            <div>
+                                <div class="text-base sm:text-xl font-black text-brand-600 dark:text-brand-400 mb-0.5">PKR ${Number(ad.price).toLocaleString()}</div>
+                                <h3 class="font-bold text-sm sm:text-base text-slate-800 dark:text-slate-100 line-clamp-1 mb-1">${ad.title}</h3>
+                                <p class="text-[11px] sm:text-xs text-slate-400 line-clamp-2 mb-2">${ad.description}</p>
+                            </div>
+
+                            <div class="flex items-center gap-2 mb-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                <img src="${ad.userPhoto || 'https://placehold.co/60x60/16a34a/ffffff?text=' + sellerInitial}" class="w-6 h-6 sm:w-7 sm:h-7 rounded-full object-cover">
+                                <span class="text-[10px] sm:text-xs font-bold text-slate-600 dark:text-slate-300 line-clamp-1">${sellerName}</span>
+                            </div>
+
+                            <div class="pt-1.5 flex items-center justify-between text-[10px] text-slate-400 gap-1">
+                                <span class="flex items-center truncate"><i class="fa-solid fa-location-dot mr-1 text-brand-500"></i>${ad.location || 'Pakistan'}</span>
+                                <div class="flex items-center gap-1 flex-shrink-0">
+                                    <button onclick="event.stopPropagation(); startChatWithSeller('${ad.title.replace(/'/g, "\\'")}', '${ad.id}')" class="w-7 h-7 rounded-lg bg-brand-600 text-white flex items-center justify-center hover:bg-brand-700 transition">
+                                        <i class="fa-solid fa-comment text-[10px]"></i>
+                                    </button>
+                                    <span class="bg-brand-50 dark:bg-brand-950/50 text-brand-600 dark:text-brand-400 font-bold px-2 py-1 rounded-lg hidden sm:inline">View</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        };
+
+        window.filterCategory = function(cat) {
+            currentCategory = cat;
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                if (btn.getAttribute('data-category') === cat) {
+                    btn.className = "category-btn flex items-center space-x-1.5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold bg-brand-600 text-white whitespace-nowrap shadow-lg shadow-brand-600/30 transition";
+                } else {
+                    btn.className = "category-btn flex items-center space-x-1.5 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 whitespace-nowrap hover:bg-slate-100 dark:hover:bg-slate-700 transition";
+                }
+            });
+            showHomeView();
+            renderAds();
+        };
+
+        window.handleSearch = function() { renderAds(); };
+
+        window.toggleWishlist = function(id, event) {
+            event.stopPropagation();
+            const idx = wishlist.indexOf(id);
+            if (idx > -1) wishlist.splice(idx, 1);
+            else wishlist.push(id);
+            localStorage.setItem('uoosb_wishlist', JSON.stringify(wishlist));
+            renderAds();
+            if (currentView === 'profile') renderProfileView();
+        };
+
+        // ==================== DETAIL WITH GALLERY ====================
+        let currentDetailImages = [];
+        let currentDetailIndex = 0;
+
+        window.viewAdDetail = function(id) {
+            const ad = allAds.find(a => a.id === id);
+            if (!ad) return;
+            const isOwner = currentUser && !currentUser.isAnonymous && ad.userId === currentUser.uid;
+            const waNumber = (ad.phone || '').replace(/[^0-9]/g, '').replace(/^0/, '92');
+            const sellerName = ad.userName || (ad.userEmail ? ad.userEmail.split('@')[0] : 'Seller');
+            const sellerInitial = sellerName.charAt(0).toUpperCase();
+            const images = ad.images && ad.images.length > 0 ? ad.images : [getCoverImage(ad)];
+            currentDetailImages = images;
+            currentDetailIndex = 0;
+
+            const container = document.getElementById('detailContentContainer');
+            container.innerHTML = `
+                <div class="relative bg-slate-900">
+                    <div class="relative h-64 sm:h-[420px] overflow-hidden">
+                        <img id="detailMainImage" src="${images[0]}" class="w-full h-full object-cover transition-opacity duration-300">
+                        <button onclick="closeDetailModal()" class="absolute top-3 right-3 sm:top-4 sm:right-4 bg-black/60 backdrop-blur-md text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-black transition z-20">
+                            <i class="fa-solid fa-xmark text-lg"></i>
+                        </button>
+                        <span class="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 bg-brand-600 text-white font-bold text-xs px-3 py-1.5 rounded-xl uppercase tracking-wider z-20">${ad.category} • ${ad.condition || 'Good'}</span>
+                        
+                        ${images.length > 1 ? `
+                            <button onclick="changeDetailImage(-1)" class="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 bg-black/60 backdrop-blur-md text-white w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center hover:bg-black transition z-20">
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </button>
+                            <button onclick="changeDetailImage(1)" class="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 bg-black/60 backdrop-blur-md text-white w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center hover:bg-black transition z-20">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </button>
+                            <div class="absolute top-3 left-3 sm:top-4 sm:left-4 bg-black/60 backdrop-blur-md text-white text-xs font-bold px-3 py-1.5 rounded-full z-20">
+                                <i class="fa-solid fa-images mr-1"></i><span id="imageCounterDetail">1/${images.length}</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    ${images.length > 1 ? `
+                        <div class="flex gap-2 p-3 overflow-x-auto no-scrollbar bg-black/30">
+                            ${images.map((img, i) => `
+                                <img src="${img}" onclick="jumpToImage(${i})" data-thumb="${i}" class="detail-thumb w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-lg cursor-pointer border-2 ${i===0 ? 'border-brand-500' : 'border-transparent opacity-60 hover:opacity-100'} flex-shrink-0 transition">
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+
+                <div class="p-4 sm:p-8 space-y-5">
+                    <div class="flex flex-col gap-3">
+                        <div class="text-2xl sm:text-3xl font-black text-brand-600 dark:text-brand-400">PKR ${Number(ad.price).toLocaleString()}</div>
+                        <h1 class="text-lg sm:text-2xl font-black text-slate-900 dark:text-slate-100">${ad.title}</h1>
+                        <span class="text-xs sm:text-sm text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl self-start">
+                            <i class="fa-solid fa-location-dot text-brand-500 mr-1"></i>${ad.location || 'Pakistan'}
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 dark:bg-slate-800/60 p-3 sm:p-4 rounded-2xl border border-slate-100 dark:border-slate-700">
+                        <div><span class="text-[10px] font-bold uppercase text-slate-400 block">Category</span><span class="text-xs sm:text-sm font-bold">${ad.category}</span></div>
+                        <div><span class="text-[10px] font-bold uppercase text-slate-400 block">Condition</span><span class="text-xs sm:text-sm font-bold">${ad.condition}</span></div>
+                        <div><span class="text-[10px] font-bold uppercase text-slate-400 block">Spec 1</span><span class="text-xs sm:text-sm font-bold text-brand-600 dark:text-brand-400">${ad.spec1 || 'N/A'}</span></div>
+                        <div><span class="text-[10px] font-bold uppercase text-slate-400 block">Spec 2</span><span class="text-xs sm:text-sm font-bold text-brand-600 dark:text-brand-400">${ad.spec2 || 'N/A'}</span></div>
+                    </div>
+
+                    <div class="flex items-center gap-3 bg-brand-50 dark:bg-slate-800 p-4 rounded-2xl border border-brand-100 dark:border-slate-700">
+                        <img src="${ad.userPhoto || 'https://placehold.co/60x60/16a34a/ffffff?text=' + sellerInitial}" class="w-12 h-12 rounded-full object-cover border-2 border-brand-500">
+                        <div class="flex-1 min-w-0">
+                            <h4 class="font-bold text-sm sm:text-base truncate">${sellerName}</h4>
+                            <p class="text-[10px] sm:text-xs text-slate-400 truncate">${ad.userEmail || 'UOO S&B Seller'}</p>
+                        </div>
+                        <div class="w-8 h-8 bg-brand-600 text-white rounded-full flex items-center justify-center flex-shrink-0">
+                            <i class="fa-solid fa-circle-check text-xs"></i>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 dark:bg-slate-800/50 p-4 sm:p-5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                        <h4 class="font-bold text-xs uppercase text-slate-400 mb-2">Description</h4>
+                        <p class="text-slate-700 dark:text-slate-300 whitespace-pre-line text-sm leading-relaxed">${ad.description}</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                        <a href="tel:${ad.phone}" class="w-full bg-brand-600 hover:bg-brand-700 text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center space-x-2 shadow-lg shadow-brand-500/30 transition">
+                            <i class="fa-solid fa-phone"></i><span>${ad.phone || 'Call'}</span>
+                        </a>
+                        <a href="https://wa.me/${waNumber}?text=${encodeURIComponent('Hello, I saw your ad on the UOO S&B website: ' + ad.title + '. I am interested in this item. Is it still available?')}" target="_blank" rel="noopener noreferrer" class="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center space-x-2 transition">
+                            <i class="fa-brands fa-whatsapp"></i><span>WhatsApp</span>
+                        </a>
+                        <button onclick="startChatWithSeller('${ad.title.replace(/'/g, "\\'")}', '${ad.id}')" class="w-full bg-slate-900 hover:bg-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600 text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center space-x-2 transition">
+                            <i class="fa-solid fa-comments"></i><span>Message</span>
+                        </button>
+                    </div>
+
+                    ${isOwner ? `
+                    <div class="grid grid-cols-2 gap-3 pt-2">
+                        <button onclick="deleteAdConfirm('${ad.id}')" class="bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 py-3 rounded-xl font-bold text-sm hover:bg-red-100 transition flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-trash"></i><span>Delete</span>
+                        </button>
+                        <button onclick="shareAd('${ad.id}')" class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 py-3 rounded-xl font-bold text-sm flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-share-nodes"></i><span>Share</span>
+                        </button>
+                    </div>` : ''}
+                </div>
+            `;
+            document.getElementById('detailModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        };
+
+        window.changeDetailImage = function(dir) {
+            if (currentDetailImages.length === 0) return;
+            currentDetailIndex = (currentDetailIndex + dir + currentDetailImages.length) % currentDetailImages.length;
+            updateDetailImage();
+        };
+
+        window.jumpToImage = function(idx) {
+            currentDetailIndex = idx;
+            updateDetailImage();
+        };
+
+        function updateDetailImage() {
+            const img = document.getElementById('detailMainImage');
+            const counter = document.getElementById('imageCounterDetail');
+            if (img) img.src = currentDetailImages[currentDetailIndex];
+            if (counter) counter.innerText = `${currentDetailIndex + 1}/${currentDetailImages.length}`;
+            document.querySelectorAll('.detail-thumb').forEach((el, i) => {
+                if (i === currentDetailIndex) {
+                    el.classList.remove('border-transparent', 'opacity-60');
+                    el.classList.add('border-brand-500');
+                } else {
+                    el.classList.remove('border-brand-500');
+                    el.classList.add('border-transparent', 'opacity-60');
+                }
+            });
+        }
+
+        window.closeDetailModal = function() {
+            document.getElementById('detailModal').classList.add('hidden');
+            document.body.style.overflow = '';
+            currentDetailImages = [];
+        };
+
+        window.shareAd = async function(id) {
+            const ad = allAds.find(a => a.id === id);
+            if (!ad) return;
+            const text = `${ad.title} - PKR ${Number(ad.price).toLocaleString()} on UOO S&B`;
+            if (navigator.share) {
+                try { await navigator.share({ title: ad.title, text }); } catch(e) {}
+            } else {
+                navigator.clipboard.writeText(text);
+                showCustomAlert("Copied! 📋", "Ad details copy ho gaye.", "success");
+            }
+        };
+
+        window.deleteAdConfirm = function(id) {
+            showConfirm("Delete Ad?", "Ye ad permanently delete ho jayega.", "Delete", async () => {
+                closeConfirm();
+                try {
+                    if (db) {
+                        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'uoo_sb_classifieds', id));
+                    } else {
+                        allAds = allAds.filter(a => a.id !== id);
+                        localStorage.setItem('uoosb_classifieds_ads', JSON.stringify(allAds));
+                        sortAndRenderAds();
+                    }
+                    closeDetailModal();
+                    showCustomAlert("Deleted ✅", "Ad delete ho gaya.", "success");
+                    if (currentView === 'profile') renderProfileView();
+                } catch(e) {
+                    showCustomAlert("Error", e.message, "error");
+                }
+            });
+        };
+
+        window.openModal = function() { document.getElementById('adModal').classList.remove('hidden'); document.body.style.overflow = 'hidden'; };
+        window.closeModal = function() { 
+            document.getElementById('adModal').classList.add('hidden'); 
+            document.body.style.overflow = '';
+            hideUploadProgress();
+        };
+
+        window.toggleDarkMode = function() {
+            document.documentElement.classList.toggle('dark');
+            localStorage.setItem('uoosb_dark', document.documentElement.classList.contains('dark') ? '1' : '0');
+        };
+
+        // ==================== REAL CHAT ====================
+        function getChatConversationId(userA, userB, adId) {
+            return [userA, userB].sort().join('_') + '_' + adId;
+        }
+
+        function profileCollection() {
+            return collection(db, 'artifacts', appId, 'public', 'data', 'uoo_sb_profiles');
+        }
+
+        function startPresence() {
+            if (!db || !currentUser || currentUser.isAnonymous) return;
+            stopPresence();
+            const writePresence = async (online = true) => {
+                try {
+                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'uoo_sb_profiles', currentUser.uid), {
+                        uid: currentUser.uid,
+                        name: currentProfile?.name || currentUser.displayName || currentUser.email?.split('@')[0] || 'User',
+                        photo: currentProfile?.photo || '',
+                        email: currentUser.email || '',
+                        online,
+                        lastSeen: Date.now()
+                    }, { merge: true });
+                } catch (e) { console.warn('Presence update failed:', e); }
+            };
+            writePresence(true);
+            presenceTimer = setInterval(() => writePresence(true), 20000);
+            window.addEventListener('beforeunload', () => { writePresence(false); });
+        }
+
+        function stopPresence() {
+            if (presenceTimer) clearInterval(presenceTimer);
+            presenceTimer = null;
+        }
+
+        function isUserOnline(data) {
+            return !!(data && data.online && Number(data.lastSeen || 0) > Date.now() - 45000);
+        }
+
+        function getTickHTML(message) {
+            if (message.senderId !== currentUser?.uid) return '';
+            if (message.seen) return '<span class="ml-1 text-sky-300 font-bold">✓✓</span>';
+            if (message.delivered) return '<span class="ml-1 text-white/80 font-bold">✓✓</span>';
+            return '<span class="ml-1 text-white/80 font-bold">✓</span>';
+        }
+
+        function initChatRealtime() {
+            if (!db || !currentUser || currentUser.isAnonymous) return;
+            if (unsubscribeChats) unsubscribeChats();
+
+            const chatsRef = collection(db, 'artifacts', appId, 'public', 'data', 'uoo_sb_chats');
+            unsubscribeChats = onSnapshot(chatsRef, async (snapshot) => {
+                chatConversations = [];
+                snapshot.forEach((snap) => {
+                    const data = snap.data() || {};
+                    if (Array.isArray(data.participants) && data.participants.includes(currentUser.uid)) {
+                        chatConversations.push({ id: snap.id, ...data });
+                    }
+                });
+                chatConversations.sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
+                renderChatConversationList();
+                updateChatBadge();
+            }, (error) => {
+                console.error('Chat realtime error:', error);
+                renderChatConversationList();
+            });
+        }
+
+        window.openChatDrawer = function() {
+            if (!currentUser || currentUser.isAnonymous) {
+                showCustomAlert('Login Required', 'Please login to use UOO S&B Messenger.', 'error');
+                openAuthModal('login');
+                return;
+            }
+            document.getElementById('chatDrawer').classList.remove('hidden');
+            renderChatConversationList();
+            renderChatMessages();
+        };
+
+        window.closeChatDrawer = function() {
+            document.getElementById('chatDrawer').classList.add('hidden');
+        };
+
+        window.startChatWithSeller = async function(itemTitle, itemId) {
+            if (!currentUser || currentUser.isAnonymous) {
+                showCustomAlert('Login Required', 'Please login to message the seller.', 'error');
+                openAuthModal('login');
+                return;
+            }
+            const ad = allAds.find(a => a.id === itemId);
+            if (!ad || !ad.userId) {
+                showCustomAlert('Chat Error', 'Seller information is not available for this ad.', 'error');
+                return;
+            }
+            if (ad.userId === currentUser.uid) {
+                showCustomAlert('Your Ad', 'You cannot message yourself about your own ad.', 'error');
+                return;
+            }
+
+            const conversationId = getChatConversationId(currentUser.uid, ad.userId, itemId);
+            activeChatId = conversationId;
+            activeChatPartnerId = ad.userId;
+
+            try {
+                const conversationRef = doc(db, 'artifacts', appId, 'public', 'data', 'uoo_sb_chats', conversationId);
+                await setDoc(conversationRef, {
+                    participants: [currentUser.uid, ad.userId],
+                    buyerId: currentUser.uid,
+                    sellerId: ad.userId,
+                    adId: itemId,
+                    adTitle: ad.title || itemTitle,
+                    adImage: (ad.images && ad.images[0]) || ad.image || '',
+                    sellerName: ad.userName || 'Seller',
+                    sellerPhoto: ad.userPhoto || '',
+                    buyerName: currentProfile?.name || currentUser.displayName || 'Buyer',
+                    buyerPhoto: currentProfile?.photo || '',
+                    updatedAt: Date.now(),
+                    lastMessage: '',
+                    unreadBy: { [currentUser.uid]: 0 }
+                }, { merge: true });
+                subscribeToActiveChat(conversationId);
+                closeDetailModal();
+                document.getElementById('chatDrawer').classList.remove('hidden');
+                renderChatConversationList();
+                renderChatMessages();
+            } catch (error) {
+                console.error('Start chat error:', error);
+                showCustomAlert('Chat Error', 'Chat start nahi ho saka. Firebase rules check karein.', 'error');
+            }
+        };
+
+        function subscribeToActiveChat(conversationId) {
+            if (!db || !currentUser) return;
+            if (unsubscribeActiveChat) unsubscribeActiveChat();
+            const active = chatConversations.find(c => c.id === conversationId);
+            if (active) activeChatPartnerId = active.sellerId === currentUser.uid ? active.buyerId : active.sellerId;
+
+            const messagesRef = collection(db, 'artifacts', appId, 'public', 'data', 'uoo_sb_chats', conversationId, 'messages');
+            unsubscribeActiveChat = onSnapshot(messagesRef, async (snapshot) => {
+                chatMessages = [];
+                const unreadToMark = [];
+                snapshot.forEach((snap) => {
+                    const m = { id: snap.id, ...snap.data() };
+                    chatMessages.push(m);
+                    if (m.senderId && m.senderId !== currentUser.uid && !m.seen) unreadToMark.push(snap.id);
+                });
+                chatMessages.sort((a, b) => Number(a.timestamp || 0) - Number(b.timestamp || 0));
+                renderChatMessages();
+
+                // Opening the conversation marks incoming messages as seen.
+                for (const messageId of unreadToMark) {
+                    try { await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'uoo_sb_chats', conversationId, 'messages', messageId), { seen: true, delivered: true }); } catch (e) {}
+                }
+                if (unreadToMark.length) {
+                    try {
+                        await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'uoo_sb_chats', conversationId), {
+                            [`unreadBy.${currentUser.uid}`]: 0
+                        }, { merge: true });
+                    } catch (e) {}
+                }
+            }, (error) => {
+                console.error('Active chat error:', error);
+                showCustomAlert('Message Error', 'Message load nahi ho saka. Firebase rules check karein.', 'error');
+            });
+        }
+
+        window.selectChatConversation = function(conversationId) {
+            activeChatId = conversationId;
+            const c = chatConversations.find(x => x.id === conversationId);
+            if (c) activeChatPartnerId = c.sellerId === currentUser.uid ? c.buyerId : c.sellerId;
+            subscribeToActiveChat(conversationId);
+            renderChatConversationList();
+            renderChatMessages();
+        };
+
+        window.goBackToChatList = function() {
+            activeChatId = null;
+            activeChatPartnerId = null;
+            if (unsubscribeActiveChat) { unsubscribeActiveChat(); unsubscribeActiveChat = null; }
+            renderChatConversationList();
+            renderChatMessages();
+        };
+
+        window.triggerChatImage = function() {
+            document.getElementById('chatImageInput')?.click();
+        };
+
+        window.handleChatImageSelect = async function(event) {
+            const file = event.target.files?.[0];
+            event.target.value = '';
+            if (!file || !activeChatId) return;
+            if (!file.type.startsWith('image/')) return showCustomAlert('Invalid Image', 'Please select an image.', 'error');
+            if (file.size > MAX_FILE_SIZE) return showCustomAlert('File Too Large', 'Image 5MB se choti honi chahiye.', 'error');
+            try {
+                const url = await uploadToCloudinaryWithProgress(file, () => {});
+                await sendChatPayload('', url);
+            } catch (error) {
+                console.error(error);
+                showCustomAlert('Image Error', error.message || 'Image send nahi ho saki.', 'error');
+            }
+        };
+
+        async function sendChatPayload(text, imageUrl = '') {
+            if (!currentUser || currentUser.isAnonymous || !activeChatId) return;
+            const now = Date.now();
+            const messagesRef = collection(db, 'artifacts', appId, 'public', 'data', 'uoo_sb_chats', activeChatId, 'messages');
+            await addDoc(messagesRef, {
+                senderId: currentUser.uid,
+                senderName: currentProfile?.name || currentUser.displayName || 'User',
+                senderPhoto: currentProfile?.photo || '',
+                text: text || '',
+                imageUrl: imageUrl || '',
+                timestamp: now,
+                delivered: false,
+                seen: false
+            });
+            const conversationRef = doc(db, 'artifacts', appId, 'public', 'data', 'uoo_sb_chats', activeChatId);
+            const unreadPath = `unreadBy.${activeChatPartnerId}`;
+            const currentUnread = Number((chatConversations.find(c => c.id === activeChatId)?.unreadBy || {})[activeChatPartnerId] || 0);
+            await setDoc(conversationRef, {
+                updatedAt: now,
+                lastMessage: imageUrl ? '📷 Photo' : text,
+                lastSenderId: currentUser.uid,
+                [`unreadBy.${activeChatPartnerId}`]: currentUnread + 1
+            }, { merge: true });
+        }
+
+        window.sendChatMessage = async function() {
+            if (!currentUser || currentUser.isAnonymous || !activeChatId) return;
+            const input = document.getElementById('chatInputBox');
+            const text = input.value.trim();
+            if (!text) return;
+            try {
+                await sendChatPayload(text, '');
+                input.value = '';
+            } catch (error) {
+                console.error('Send message error:', error);
+                showCustomAlert('Message Error', 'Message send nahi ho saka. Firebase rules check karein.', 'error');
+            }
+        };
+
+        window.renderChatConversationList = function() {
+            const list = document.getElementById('chatConversationList');
+            if (!list) return;
+            if (!chatConversations.length) {
+                list.innerHTML = `<div class="p-4 text-center text-xs text-slate-400">No chats yet. Open an ad and tap <b>Message</b>.</div>`;
+                return;
+            }
+            list.innerHTML = chatConversations.map((c, index) => {
+                const otherIsSeller = c.sellerId !== currentUser.uid;
+                const otherName = otherIsSeller ? (c.sellerName || 'Seller') : (c.buyerName || 'Buyer');
+                const otherPhoto = otherIsSeller ? c.sellerPhoto : c.buyerPhoto;
+                const initial = (otherName || 'U').charAt(0).toUpperCase();
+                const unread = Number((c.unreadBy || {})[currentUser.uid] || 0);
+                const active = c.id === activeChatId;
+                return `<button onclick="selectChatConversation('${c.id}')" class="w-full text-left px-3 py-3 flex items-center gap-3 ${active ? 'bg-brand-50 dark:bg-brand-950/30' : 'hover:bg-slate-50 dark:hover:bg-slate-800'} border-b border-slate-100 dark:border-slate-800 transition">
+                    <div class="relative flex-shrink-0"><img src="${otherPhoto || 'https://placehold.co/80x80/16a34a/ffffff?text=' + initial}" class="w-11 h-11 rounded-full object-cover border border-slate-200" onerror="this.src='https://placehold.co/80x80/16a34a/ffffff?text=${initial}'"><span class="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white dark:border-slate-900 bg-slate-400" data-presence-id="${otherIsSeller ? c.sellerId : c.buyerId}"></span></div>
+                    <div class="min-w-0 flex-1"><div class="flex items-center gap-2"><span class="font-bold text-sm truncate">${index + 1}. ${otherName}</span>${unread ? `<span class="ml-auto min-w-5 h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">${unread > 99 ? '99+' : unread}</span>` : ''}</div><p class="text-[11px] text-slate-400 truncate">${c.lastMessage || 'Conversation started'}</p></div>
+                </button>`;
+            }).join('');
+            refreshConversationPresence();
+        };
+
+        async function refreshConversationPresence() {
+            if (!db || !currentUser) return;
+            const ids = [...new Set(chatConversations.flatMap(c => [c.sellerId, c.buyerId]).filter(id => id && id !== currentUser.uid))];
+            for (const uid of ids) {
+                try {
+                    const ref = doc(db, 'artifacts', appId, 'public', 'data', 'uoo_sb_profiles', uid);
+                    onSnapshot(ref, (snap) => {
+                        const online = isUserOnline(snap.data() || {});
+                        document.querySelectorAll(`[data-presence-id="${uid}"]`).forEach(el => {
+                            el.className = `absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white dark:border-slate-900 ${online ? 'bg-green-500' : 'bg-slate-400'}`;
+                        });
+                        const status = document.getElementById('activeChatStatus');
+                        if (status && activeChatPartnerId === uid) status.innerText = online ? 'Online' : 'Offline';
+                    });
+                } catch (e) {}
+            }
+        }
+
+        window.renderChatMessages = function() {
+            const container = document.getElementById('chatMessagesList');
+            const composer = document.getElementById('chatComposer');
+            const header = document.getElementById('activeChatHeader');
+            if (!container) return;
+            const active = chatConversations.find(c => c.id === activeChatId);
+            if (!active) {
+                if (composer) composer.classList.add('hidden');
+                if (header) header.classList.add('hidden');
+                container.innerHTML = `<div class="h-full flex items-center justify-center text-center text-slate-400 text-sm px-6">Open an ad and tap <b class="mx-1">Message</b> to contact the seller.</div>`;
+                return;
+            }
+            const otherIsSeller = active.sellerId !== currentUser.uid;
+            const otherName = otherIsSeller ? (active.sellerName || 'Seller') : (active.buyerName || 'Buyer');
+            const otherPhoto = otherIsSeller ? active.sellerPhoto : active.buyerPhoto;
+            const initial = (otherName || 'U').charAt(0).toUpperCase();
+            if (header) {
+                header.classList.remove('hidden');
+                header.innerHTML = `<div class="flex items-center gap-2"><button onclick="goBackToChatList()" class="p-2 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700"><i class="fa-solid fa-arrow-left"></i></button><img src="${otherPhoto || 'https://placehold.co/80x80/16a34a/ffffff?text=' + initial}" class="w-10 h-10 rounded-full object-cover"><div class="min-w-0 flex-1"><div class="font-bold text-sm truncate">${otherName}</div><div id="activeChatStatus" class="text-[10px] text-slate-400">Offline</div></div><div class="text-[9px] text-slate-400 max-w-[100px] truncate">${active.adTitle || 'UOO S&B Ad'}</div></div>`;
+            }
+            if (composer) composer.classList.remove('hidden');
+            if (!chatMessages.length) { container.innerHTML = `<div class="text-center text-slate-400 py-10 text-sm px-4">Start the conversation about <b>${active.adTitle || 'this ad'}</b>.</div>`; return; }
+            container.innerHTML = chatMessages.map(m => {
+                const mine = m.senderId === currentUser.uid || m.sender === 'You';
+                const img = m.imageUrl ? `<img src="${m.imageUrl}" class="max-w-[220px] sm:max-w-[280px] max-h-[280px] rounded-xl object-cover mb-1 cursor-pointer" onclick="window.open('${m.imageUrl}','_blank')">` : '';
+                return `<div class="flex flex-col ${mine ? 'items-end' : 'items-start'}"><div class="max-w-[88%] sm:max-w-[75%] rounded-2xl px-3 py-2 text-sm ${mine ? 'bg-brand-600 text-white rounded-br-none' : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-bl-none border border-slate-200 dark:border-slate-700'}">${img}${m.text ? `<div class="whitespace-pre-wrap break-words">${m.text}</div>` : ''}</div><span class="text-[10px] text-slate-400 mt-1 px-1">${m.timestamp ? new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : ''}${mine ? getTickHTML(m) : ''}</span></div>`;
+            }).join('');
+            container.scrollTop = container.scrollHeight;
+            refreshConversationPresence();
+        };
+
+        window.updateChatBadge = function() {
+            const badge = document.getElementById('chatBadge');
+            const badgeMobile = document.getElementById('chatBadgeMobile');
+            const count = chatConversations.reduce((n, c) => n + Number((c.unreadBy || {})[currentUser?.uid] || 0), 0);
+            [badge, badgeMobile].forEach(el => { if (!el) return; el.innerText = count > 99 ? '99+' : count; el.classList.toggle('hidden', count === 0); });
+        };
+
+        function updateBottomNav() {
+            const nav = document.getElementById('bottomNav');
+            if (!nav) return;
+            if (window.innerWidth < 768) nav.classList.remove('hidden');
+            else nav.classList.add('hidden');
+
+            ['navHome', 'navChat', 'navSell', 'navProfile'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) { el.classList.remove('text-brand-600'); el.classList.add('text-slate-400'); }
+            });
+            if (currentView === 'home') {
+                const h = document.getElementById('navHome');
+                if (h) { h.classList.remove('text-slate-400'); h.classList.add('text-brand-600'); }
+            }
+            if (currentView === 'profile') {
+                const p = document.getElementById('navProfile');
+                if (p) { p.classList.remove('text-slate-400'); p.classList.add('text-brand-600'); }
+            }
+        }
+        window.addEventListener('resize', updateBottomNav);
+
+        window.showCustomAlert = function(title, message, type = 'success') {
+            document.getElementById('alertTitle').innerText = title;
+            document.getElementById('alertMessage').innerText = message;
+            const icon = document.getElementById('alertIcon');
+            if (type === 'error') {
+                icon.className = "w-14 h-14 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4 text-2xl";
+                icon.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i>';
+            } else {
+                icon.className = "w-14 h-14 rounded-2xl bg-brand-100 text-brand-600 flex items-center justify-center mx-auto mb-4 text-2xl";
+                icon.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
+            }
+            document.getElementById('alertModal').classList.remove('hidden');
+        };
+        window.closeAlert = function() { document.getElementById('alertModal').classList.add('hidden'); };
+
+        window.showConfirm = function(title, message, btnText, callback) {
+            document.getElementById('confirmTitle').innerText = title;
+            document.getElementById('confirmMessage').innerText = message;
+            const btn = document.getElementById('confirmBtn');
+            btn.innerText = btnText || 'Confirm';
+            btn.onclick = callback;
+            document.getElementById('confirmModal').classList.remove('hidden');
+        };
+        window.closeConfirm = function() { document.getElementById('confirmModal').classList.add('hidden'); };
+
+        updateBottomNav();
+    </script>
+</body>
+</html>
