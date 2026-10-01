@@ -1321,105 +1321,97 @@
         function initRealtimeListener() {
             if (!db) return loadLocalStorageFallback();
 
-            try {
-                const adsColRef = collection(db, 'uoo_sb_classifieds');
-
-                // No Firestore orderBy here. Sorting is done in JavaScript.
-                // This avoids index/query problems and supports older documents.
-                // Live shared feed: every authenticated browser listens to the same
-                // Firestore collection. Cloudinary only stores the image files; Firestore
-                // stores the public ad data + Cloudinary URLs.
-                unsubscribeAds = onSnapshot(
-                    adsColRef,
-                    (snapshot) => {
-                        const remoteAds = [];
-
-                        snapshot.forEach((docSnap) => {
-                            const data = docSnap.data() || {};
-
-                            if (data.image && !Array.isArray(data.images)) {
-                                data.images = [data.image];
-                            }
-
-                            if (!Array.isArray(data.images)) {
-                                data.images = [];
-                            }
-
-                            remoteAds.push({
-                                id: docSnap.id,
-                                ...data
-                            });
-                        });
-
-                        // Firestore is the shared source of truth: every signed-in user
-                        // reads the same public classifieds collection, so posts from any
-                        // user are shown to everyone (subject only to the selected filters).
-                        allAds = remoteAds.sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0));
-
-                        // Keep a local cache as a backup, not as the main data source.
-                        try {
-                            localStorage.setItem('uoosb_classifieds_ads', JSON.stringify(allAds));
-                        } catch (cacheError) {
-                            console.warn('Local ad cache failed:', cacheError);
-                        }
-
-                        sortAndRenderAds();
-
-                        if (currentView === 'profile') {
-                            renderProfileView();
-                        }
-                    },
-                    async (error) => {
-                        console.error("Firestore realtime listener error:", error);
-
-                        // Try a normal Firestore read once. If this also fails, the
-                        // problem is almost certainly Firestore Rules/auth/network,
-                        // not the UI.
-                        try {
-                            const snap = await getDocs(adsColRef);
-                            const remoteAds = [];
-                            snap.forEach((docSnap) => {
-                                const data = docSnap.data() || {};
-                                if (data.image && !Array.isArray(data.images)) data.images = [data.image];
-                                if (!Array.isArray(data.images)) data.images = [];
-                                remoteAds.push({ id: docSnap.id, ...data });
-                            });
-                            allAds = remoteAds.sort((a,b) => Number(b.timestamp||0) - Number(a.timestamp||0));
-                            localStorage.setItem('uoosb_classifieds_ads', JSON.stringify(allAds));
-                            sortAndRenderAds();
-                            showCustomAlert(
-                                "Live Reconnect",
-                                "Posts are connected again. Firebase is now syncing the shared feed.",
-                                "success"
-                            );
-                        } catch (readError) {
-                            console.error("Firestore read fallback failed:", readError);
-                            loadLocalStorageFallback();
-                            showCustomAlert(
-                                "Firebase Sync Error",
-                                "Posts are not being shared between devices. In Firebase Console → Firestore → Rules, allow authenticated users to read/write the UOO S&B classifieds collection. Also check that both devices use this same Firebase project.",
-                                "error"
-                            );
-                        }
-                    }
-                );
-            } catch (e) {
-                console.error("Listener setup error:", e);
-                loadLocalStorageFallback();
+            // Always remove the previous listener first. This prevents duplicate
+            // listeners when Firebase auth changes from anonymous -> logged-in.
+            if (unsubscribeAds) {
+                try { unsubscribeAds(); } catch (e) {}
+                unsubscribeAds = null;
             }
-        }
 
-        async function seedSampleAds() {
-            localStorage.setItem('uoosb_seeded', 'true');
-            const samples = [
-                { title: 'Honda Civic Oriel 1.5 VTEC Turbo 2023', price: 8650000, category: 'Vehicles', location: 'Lahore', condition: 'Good Condition', spec1: '2023', spec2: '18,000 km', phone: '03211234567', description: 'Bumper to bumper original, first owner, ceramic coated, sunroof, leather seats.', images: ['https://placehold.co/600x400/0284c7/ffffff?text=Honda+Civic+2023'], timestamp: Date.now() - 200000, userId: 'system', userEmail: 'system@uoosb.com' },
-                { title: 'Luxury 10 Marla Brand New House Bahria Town', price: 34500000, category: 'Property', location: 'Islamabad', condition: 'Brand New', spec1: '10 Marla (5 Beds)', spec2: 'Double Unit', phone: '03009876543', description: '5 master bedrooms, imported fittings, spacious TV lounge.', images: ['https://placehold.co/600x400/16a34a/ffffff?text=Luxury+House'], timestamp: Date.now() - 100000, userId: 'system', userEmail: 'system@uoosb.com' },
-                { title: 'iPhone 15 Pro Max 256GB PTA Approved', price: 385000, category: 'Mobiles', location: 'Karachi', condition: 'Like New', spec1: '256GB / 8GB RAM', spec2: 'PTA Approved', phone: '03331234567', description: 'Complete box, original charger, 100% battery health.', images: ['https://placehold.co/600x400/7c3aed/ffffff?text=iPhone+15+Pro+Max'], timestamp: Date.now(), userId: 'system', userEmail: 'system@uoosb.com' }
-            ];
-            if (!db) return;
-            for (const ad of samples) {
-                try { await addDoc(collection(db, 'uoo_sb_classifieds'), ad); }
-                catch(e) { console.warn("Seed failed:", e.message); }
+            try {
+                const sharedRef = collection(db, 'uoo_sb_classifieds');
+                // Legacy path is kept so older products are not lost.
+                const legacyRef = collection(db, 'artifacts', appId, 'public', 'data', 'uoo_sb_classifieds');
+
+                let sharedAds = [];
+                let legacyAds = [];
+                let sharedUnsub = null;
+                let legacyUnsub = null;
+
+                const mergeAndRender = () => {
+                    const merged = new Map();
+
+                    [...legacyAds, ...sharedAds].forEach(ad => {
+                        if (!ad) return;
+                        // publicId links mirrored copies of the same product.
+                        const key = ad.publicId || ad.id;
+                        if (!key) return;
+                        const existing = merged.get(key);
+                        if (!existing || Number(ad.timestamp || 0) >= Number(existing.timestamp || 0)) {
+                            merged.set(key, ad);
+                        }
+                    });
+
+                    allAds = Array.from(merged.values())
+                        .sort((a, b) => Number(b.timestamp || 0) - Number(a.timestamp || 0));
+
+                    try {
+                        localStorage.setItem('uoosb_classifieds_ads', JSON.stringify(allAds));
+                    } catch (cacheError) {}
+
+                    sortAndRenderAds();
+                    if (currentView === 'profile') renderProfileView();
+                };
+
+                const normalizeSnapshot = (snapshot) => {
+                    const list = [];
+                    snapshot.forEach(docSnap => {
+                        const data = docSnap.data() || {};
+                        if (data.image && !Array.isArray(data.images)) data.images = [data.image];
+                        if (!Array.isArray(data.images)) data.images = [];
+                        list.push({ id: docSnap.id, ...data });
+                    });
+                    return list;
+                };
+
+                // Listen to BOTH collections. This makes the feed compatible with
+                // existing Firebase rules/data and the new shared collection.
+                const startShared = () => {
+                    try {
+                        sharedUnsub = onSnapshot(sharedRef, snapshot => {
+                            sharedAds = normalizeSnapshot(snapshot);
+                            mergeAndRender();
+                        }, error => {
+                            console.error('Shared classifieds listener error:', error);
+                        });
+                    } catch (e) {
+                        console.error('Shared classifieds listener start error:', e);
+                    }
+                };
+
+                const startLegacy = () => {
+                    try {
+                        legacyUnsub = onSnapshot(legacyRef, snapshot => {
+                            legacyAds = normalizeSnapshot(snapshot);
+                            mergeAndRender();
+                        }, error => {
+                            console.error('Legacy classifieds listener error:', error);
+                        });
+                    } catch (e) {
+                        console.error('Legacy classifieds listener start error:', e);
+                    }
+                };
+
+                startShared();
+                startLegacy();
+
+                unsubscribeAds = () => {
+                    try { if (sharedUnsub) sharedUnsub(); } catch (e) {}
+                    try { if (legacyUnsub) legacyUnsub(); } catch (e) {}
+                };
+            } catch (e) {
+                console.error('Firebase classifieds listener error:', e);
+                loadLocalStorageFallback();
             }
         }
 
@@ -1563,29 +1555,56 @@
                 };
 
                 if (db) {
-                    // Save to Firestore first.
-                    const adsCollection = collection(db, 'uoo_sb_classifieds');
+                    // Give every product one stable public ID so the same product can
+                    // safely exist in both the new shared collection and the legacy
+                    // collection without appearing twice.
+                    const publicId = (window.crypto && window.crypto.randomUUID)
+                        ? window.crypto.randomUUID()
+                        : `uoo_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+                    newAd.publicId = publicId;
 
-                    const savedRef = await addDoc(adsCollection, newAd);
+                    let savedRef = null;
+                    let sharedSaveError = null;
+                    let legacySaveError = null;
 
-                    // Verify the write completed against Firebase before telling the
-                    // user the ad is live. The Cloudinary URLs are stored in Firestore.
-                    if (!savedRef || !savedRef.id) {
-                        throw new Error("Firebase did not return the saved ad ID.");
+                    // Primary shared collection: all users/devices read this collection.
+                    try {
+                        savedRef = await addDoc(collection(db, 'uoo_sb_classifieds'), newAd);
+                    } catch (e) {
+                        sharedSaveError = e;
+                        console.error('Shared collection save failed:', e);
                     }
 
-                    // IMPORTANT: immediately show the newly saved post.
+                    // Compatibility mirror: keeps products visible when an existing
+                    // Firebase project still has the older artifacts/* rules/path.
+                    try {
+                        await addDoc(
+                            collection(db, 'artifacts', appId, 'public', 'data', 'uoo_sb_classifieds'),
+                            newAd
+                        );
+                    } catch (e) {
+                        legacySaveError = e;
+                        console.error('Legacy collection save failed:', e);
+                    }
+
+                    // At least ONE Firebase write must succeed. This avoids pretending
+                    // that a product is online when Firebase rejected both writes.
+                    if (!savedRef && legacySaveError) {
+                        const firstError = sharedSaveError?.message || legacySaveError?.message || 'Firebase save failed';
+                        throw new Error(`Product Firebase mein save nahi hua: ${firstError}`);
+                    }
+
+                    // IMPORTANT: immediately show the newly saved product locally too.
                     const savedAd = {
-                        id: savedRef.id,
+                        id: savedRef?.id || publicId,
                         ...newAd
                     };
 
                     allAds = [
                         savedAd,
-                        ...allAds.filter(ad => ad.id !== savedRef.id)
+                        ...allAds.filter(ad => (ad.publicId || ad.id) !== publicId)
                     ];
 
-                    // Local backup for temporary realtime/listener failures.
                     localStorage.setItem(
                         'uoosb_classifieds_ads',
                         JSON.stringify(allAds)
@@ -1906,7 +1925,29 @@
                 closeConfirm();
                 try {
                     if (db) {
-                        await deleteDoc(doc(db, 'uoo_sb_classifieds', id));
+                        const adToDelete = allAds.find(a => a.id === id);
+                        const publicId = adToDelete?.publicId;
+                        const deletes = [];
+
+                        // Delete from the new shared collection.
+                        deletes.push(deleteDoc(doc(db, 'uoo_sb_classifieds', id)));
+
+                        // Also delete the mirrored legacy copy when its publicId is known.
+                        // Querying avoids relying on the two collections having the same doc ID.
+                        if (publicId) {
+                            try {
+                                const legacySnap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'uoo_sb_classifieds'));
+                                legacySnap.forEach(d => {
+                                    if (d.data()?.publicId === publicId) {
+                                        deletes.push(deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'uoo_sb_classifieds', d.id)));
+                                    }
+                                });
+                            } catch (legacyDeleteError) {
+                                console.warn('Legacy delete skipped:', legacyDeleteError);
+                            }
+                        }
+
+                        await Promise.allSettled(deletes);
                     } else {
                         allAds = allAds.filter(a => a.id !== id);
                         localStorage.setItem('uoosb_classifieds_ads', JSON.stringify(allAds));
