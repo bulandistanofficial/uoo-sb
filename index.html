@@ -646,6 +646,9 @@
                     } else {
                         currentProfile = null;
                         renderChatMessages();
+                        // Public feed: keep products visible even when the visitor
+                        // is not logged in (or is using anonymous Firebase auth).
+                        initRealtimeListener();
                     }
                 });
 
